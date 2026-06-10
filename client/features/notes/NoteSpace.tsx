@@ -1,0 +1,848 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  SlidersHorizontal,
+  Grid2X2,
+  List as ListIcon,
+} from "lucide-react";
+import NoteList from "./components/NoteList";
+import NoteEditor from "./components/NoteEditor";
+import { Note } from "./types/note";
+import { useTheme } from "@/shared/theme/ThemeProvider";
+import {
+  createNote as createNoteApi,
+  deleteNote as deleteNoteApi,
+  fetchNotes,
+  fetchTrashedNotes,
+  isPersistedNoteId,
+  updateNote as updateNoteApi,
+} from "./api/notesApi";
+import { getStoredAuthUser } from "@/features/auth/authClient";
+
+const NEW_NOTE_EVENT = "notezy:create-note";
+const NOTE_FILTER_EVENT = "notezy:set-note-filter";
+const NOTE_SEARCH_EVENT = "notezy:set-note-search";
+const NOTE_CATEGORY_EVENT = "notezy:update-note-category";
+const NOTES_CACHE_KEY = "notezy-notes-cache";
+
+type SaveStatus = "idle" | "saving" | "saved" | "deleted";
+type NoteFilter = "all" | "favorites" | "pinned" | "trash" | "category";
+
+function createBlankNote(category = "Personal"): Note {
+  return {
+    id: `note-${Date.now()}-${crypto.randomUUID()}`,
+    title: "Untitled Note",
+    preview: "",
+    content: "# Untitled Note\n\n",
+    tone: "paper",
+    date: "Today",
+    starred: false,
+    pinned: false,
+    archived: false,
+    trashed: false,
+    category,
+  };
+}
+
+function toCreatePayload(note: Note): Omit<Note, "id" | "date"> {
+  const { id, date, ...payload } = note;
+  void id;
+  void date;
+  return payload;
+}
+
+function getNotesCacheKey() {
+  const userId = getStoredAuthUser()?.id;
+  return userId ? `${NOTES_CACHE_KEY}:${userId}` : NOTES_CACHE_KEY;
+}
+
+function readCachedNotes() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const cachedNotes = localStorage.getItem(getNotesCacheKey());
+
+    if (!cachedNotes) {
+      return [];
+    }
+
+    const parsedNotes = JSON.parse(cachedNotes);
+    return Array.isArray(parsedNotes) ? (parsedNotes as Note[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function cacheNotes(notes: Note[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.setItem(getNotesCacheKey(), JSON.stringify(notes));
+}
+
+export default function NoteWorkspace() {
+  const { mode, colors } = useTheme();
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [activeId, setActiveId] = useState<string>("");
+  const [newNoteId, setNewNoteId] = useState<string>("");
+  const [activeFilter, setActiveFilter] = useState<NoteFilter>("all");
+  const [activeCategory, setActiveCategory] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const isCreatingNoteRef = useRef(false);
+  const saveStatusTimeoutRef = useRef<number | null>(null);
+  const textSaveTimeoutRef = useRef<number | null>(null);
+
+  const visibleNotes = useMemo(() => {
+    const filteredBySidebar =
+      activeFilter === "favorites"
+        ? notes.filter((note) => !note.trashed && note.starred)
+        : activeFilter === "pinned"
+          ? notes.filter((note) => !note.trashed && note.pinned)
+          : activeFilter === "trash"
+            ? notes.filter((note) => note.trashed)
+          : activeFilter === "category"
+            ? notes.filter(
+                (note) =>
+                  !note.trashed &&
+                  (note.category ?? "").toLowerCase() ===
+                  activeCategory.toLowerCase(),
+              )
+          : notes.filter((note) => !note.trashed);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return filteredBySidebar;
+    }
+
+    return filteredBySidebar.filter((note) => {
+      const searchableText = [
+        note.title,
+        note.preview,
+        note.content,
+        note.category,
+        note.date,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [activeCategory, activeFilter, notes, searchQuery]);
+  const notesTitle =
+    searchQuery.trim()
+      ? "Search Results"
+      : activeFilter === "favorites"
+        ? "Favorites"
+        : activeFilter === "pinned"
+          ? "Pinned"
+          : activeFilter === "trash"
+            ? "Trash"
+          : activeFilter === "category"
+            ? activeCategory || "Category"
+          : "Notes";
+  const notesSubtitle =
+    searchQuery.trim()
+      ? `${visibleNotes.length} result${visibleNotes.length === 1 ? "" : "s"} for "${searchQuery.trim()}"`
+      : "";
+  const selectedNote =
+    visibleNotes.find((note) => note.id === activeId) ?? null;
+
+  const showSaveStatus = (status: SaveStatus) => {
+    if (saveStatusTimeoutRef.current) {
+      window.clearTimeout(saveStatusTimeoutRef.current);
+    }
+
+    setSaveStatus(status);
+
+    if (status === "saved" || status === "deleted") {
+      saveStatusTimeoutRef.current = window.setTimeout(
+        () => setSaveStatus("idle"),
+        1800,
+      );
+    }
+  };
+
+  const createAndSelectNote = useCallback(async () => {
+    if (isCreatingNoteRef.current) {
+      return;
+    }
+
+    isCreatingNoteRef.current = true;
+    showSaveStatus("saving");
+    const blankNote = createBlankNote(
+      activeFilter === "category" && activeCategory ? activeCategory : "Personal",
+    );
+
+    setNotes((currentNotes) => {
+      const nextNotes = [blankNote, ...currentNotes];
+      cacheNotes(nextNotes);
+      return nextNotes;
+    });
+    setActiveId(blankNote.id);
+    setActiveFilter("all");
+    setActiveCategory("");
+    setSearchQuery("");
+    window.dispatchEvent(
+      new CustomEvent(NOTE_SEARCH_EVENT, { detail: { query: "" } }),
+    );
+    setNewNoteId(blankNote.id);
+    setViewMode("list");
+    window.setTimeout(() => setNewNoteId(""), 650);
+
+    try {
+      const savedNote = await createNoteApi(toCreatePayload(blankNote));
+
+      setNotes((currentNotes) => {
+        const nextNotes = currentNotes.map((note) =>
+          note.id === blankNote.id ? savedNote : note,
+        );
+        cacheNotes(nextNotes);
+        return nextNotes;
+      });
+      setActiveId(savedNote.id);
+      showSaveStatus("saved");
+    } catch (error) {
+      console.warn("New note is local until the API is available.", error);
+      showSaveStatus("saved");
+    } finally {
+      isCreatingNoteRef.current = false;
+    }
+  }, [activeCategory, activeFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadNotes = async () => {
+      const cachedNotes = readCachedNotes();
+
+      if (cachedNotes.length > 0) {
+        setNotes(cachedNotes);
+        setIsLoadingNotes(false);
+      }
+
+      try {
+        const [apiNotes, trashedNotes] = await Promise.all([
+          fetchNotes(),
+          fetchTrashedNotes(),
+        ]);
+        const allApiNotes = [...apiNotes, ...trashedNotes];
+
+        if (cancelled) {
+          return;
+        }
+
+        if (allApiNotes.length === 0) {
+          cacheNotes([]);
+          setNotes([]);
+          setActiveId("");
+          setIsLoadingNotes(false);
+          return;
+        }
+
+        setNotes(allApiNotes);
+        cacheNotes(allApiNotes);
+        setActiveId((currentActiveId) =>
+          allApiNotes.some((note) => note.id === currentActiveId)
+            ? currentActiveId
+            : "",
+        );
+        setIsLoadingNotes(false);
+      } catch (error) {
+        console.warn("Using local notes because API notes could not load.", error);
+        setNotes(cachedNotes);
+        setActiveId("");
+        setIsLoadingNotes(false);
+      }
+    };
+
+    void loadNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleCreateNote = () => void createAndSelectNote();
+
+    window.addEventListener(NEW_NOTE_EVENT, handleCreateNote);
+
+    return () => window.removeEventListener(NEW_NOTE_EVENT, handleCreateNote);
+  }, [createAndSelectNote]);
+
+  useEffect(() => {
+    const handleFilterChange = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        filter?: NoteFilter;
+        category?: string;
+      }>).detail;
+      const filter = detail?.filter;
+
+      if (
+        filter === "all" ||
+        filter === "favorites" ||
+        filter === "pinned" ||
+        filter === "trash"
+      ) {
+        setActiveFilter(filter);
+        setActiveCategory("");
+      }
+
+      if (filter === "category" && detail?.category) {
+        setActiveFilter("category");
+        setActiveCategory(detail.category);
+      }
+    };
+
+    window.addEventListener(NOTE_FILTER_EVENT, handleFilterChange);
+
+    return () =>
+      window.removeEventListener(NOTE_FILTER_EVENT, handleFilterChange);
+  }, []);
+
+  useEffect(() => {
+    const handleSearchChange = (event: Event) => {
+      const query = (event as CustomEvent<{ query?: string }>).detail?.query;
+
+      setSearchQuery(query ?? "");
+    };
+
+    window.addEventListener(NOTE_SEARCH_EVENT, handleSearchChange);
+
+    return () =>
+      window.removeEventListener(NOTE_SEARCH_EVENT, handleSearchChange);
+  }, []);
+
+  useEffect(() => {
+    const handleCategoryUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        action?: "rename" | "delete";
+        oldCategory?: string;
+        newCategory?: string;
+        category?: string;
+      }>).detail;
+
+      if (detail?.action === "rename" && detail.oldCategory && detail.newCategory) {
+        setNotes((currentNotes) => {
+          const nextNotes = currentNotes.map((note) =>
+            (note.category ?? "").toLowerCase() ===
+            detail.oldCategory!.toLowerCase()
+              ? { ...note, category: detail.newCategory }
+              : note,
+          );
+          cacheNotes(nextNotes);
+
+          nextNotes
+            .filter(
+              (note, index) =>
+                currentNotes[index]?.category !== note.category &&
+                isPersistedNoteId(note.id),
+            )
+            .forEach((note) => {
+              void updateNoteApi(note.id, { category: note.category }).catch(
+                (error) =>
+                  console.warn("Category rename could not be persisted.", error),
+              );
+            });
+
+          return nextNotes;
+        });
+        setActiveFilter("category");
+        setActiveCategory(detail.newCategory);
+      }
+
+      if (detail?.action === "delete" && detail.category) {
+        setNotes((currentNotes) => {
+          const nextNotes = currentNotes.map((note) =>
+            (note.category ?? "").toLowerCase() === detail.category!.toLowerCase()
+              ? { ...note, category: "Personal" }
+              : note,
+          );
+          cacheNotes(nextNotes);
+
+          nextNotes
+            .filter(
+              (note, index) =>
+                currentNotes[index]?.category !== note.category &&
+                isPersistedNoteId(note.id),
+            )
+            .forEach((note) => {
+              void updateNoteApi(note.id, { category: "Personal" }).catch(
+                (error) =>
+                  console.warn("Category delete could not be persisted.", error),
+              );
+            });
+
+          return nextNotes;
+        });
+        setActiveFilter("all");
+        setActiveCategory("");
+        setActiveId("");
+      }
+    };
+
+    window.addEventListener(NOTE_CATEGORY_EVENT, handleCategoryUpdate);
+
+    return () =>
+      window.removeEventListener(NOTE_CATEGORY_EVENT, handleCategoryUpdate);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (textSaveTimeoutRef.current) {
+        window.clearTimeout(textSaveTimeoutRef.current);
+      }
+
+      if (saveStatusTimeoutRef.current) {
+        window.clearTimeout(saveStatusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const persistNoteChanges = (id: string, changes: Partial<Note>) => {
+    if (!isPersistedNoteId(id)) {
+      showSaveStatus("saved");
+      return;
+    }
+
+    void updateNoteApi(id, changes)
+      .then(() => showSaveStatus("saved"))
+      .catch((error) => {
+        console.warn("Note update could not be persisted.", error);
+        showSaveStatus("idle");
+      });
+  };
+
+  const updateNote = (id: string, changes: Partial<Note>) => {
+    const previousNotes = notes;
+    showSaveStatus("saving");
+
+    setNotes((currentNotes) => {
+      const nextNotes = currentNotes.map((note) =>
+        note.id === id
+          ? {
+              ...note,
+              ...changes,
+            }
+          : note,
+      );
+      cacheNotes(nextNotes);
+      return nextNotes;
+    });
+
+    if (!isPersistedNoteId(id)) {
+      showSaveStatus("saved");
+      return;
+    }
+
+    void updateNoteApi(id, changes)
+      .then(() => showSaveStatus("saved"))
+      .catch((error) => {
+        console.warn("Note update could not be persisted.", error);
+        setNotes(previousNotes);
+        cacheNotes(previousNotes);
+        showSaveStatus("idle");
+      });
+  };
+
+  const updateNoteText = (id: string, title: string, body: string) => {
+    const trimmedTitle = title.trim() || "Untitled Note";
+    const plainBody = stripNoteHtml(body);
+    const preview = plainBody
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join("\n");
+
+    const changes = {
+      title,
+      preview,
+      content: `# ${trimmedTitle}\n\n${body}`,
+    };
+
+    showSaveStatus("saving");
+    setNotes((currentNotes) => {
+      const nextNotes = currentNotes.map((note) =>
+        note.id === id ? { ...note, ...changes } : note,
+      );
+      cacheNotes(nextNotes);
+      return nextNotes;
+    });
+
+    if (textSaveTimeoutRef.current) {
+      window.clearTimeout(textSaveTimeoutRef.current);
+    }
+
+    textSaveTimeoutRef.current = window.setTimeout(() => {
+      persistNoteChanges(id, changes);
+    }, 950);
+  };
+
+  const stripNoteHtml = (value: string) =>
+    value
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(div|p|li|h[1-6])>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+  const deleteNote = (id: string) => {
+    updateNote(id, { trashed: true, pinned: false });
+
+    if (activeId === id) {
+      setActiveId("");
+    }
+  };
+
+  const restoreNote = (id: string) => {
+    updateNote(id, { trashed: false });
+
+    if (activeFilter === "trash" && activeId === id) {
+      setActiveId("");
+    }
+  };
+
+  const permanentlyDeleteNote = (id: string) => {
+    const previousNotes = notes;
+    showSaveStatus("deleted");
+
+    setNotes((currentNotes) => {
+      const remainingNotes = currentNotes.filter((note) => note.id !== id);
+
+      if (activeId === id) {
+        setActiveId("");
+      }
+
+      cacheNotes(remainingNotes);
+      return remainingNotes;
+    });
+
+    if (!isPersistedNoteId(id)) {
+      return;
+    }
+
+    void deleteNoteApi(id).catch((error) => {
+      console.warn("Note delete could not be persisted.", error);
+      setNotes(previousNotes);
+      cacheNotes(previousNotes);
+      showSaveStatus("idle");
+    });
+  };
+
+  const duplicateNote = (id: string) => {
+    setNotes((currentNotes) => {
+      const sourceNote = currentNotes.find((note) => note.id === id);
+
+      if (!sourceNote) {
+        return currentNotes;
+      }
+
+      const duplicatedNote: Note = {
+        ...sourceNote,
+        id: `note-${Date.now()}`,
+        title: `${sourceNote.title || "Untitled Note"} Copy`,
+        date: "Today",
+        pinned: false,
+      };
+
+      const nextNotes = [duplicatedNote, ...currentNotes];
+      cacheNotes(nextNotes);
+      setActiveId(duplicatedNote.id);
+      return nextNotes;
+    });
+  };
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          viewMode === "grid" ? "1fr" : "clamp(260px, 21vw, 330px) minmax(0, 1fr)",
+        height: "100%",
+        minHeight: 0,
+        gap: 20,
+        paddingTop: 2,
+        alignItems: "stretch",
+      }}
+    >
+      <section
+        style={{
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+              marginBottom: 18,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 25,
+                fontWeight: 900,
+                color: mode === "light" ? "#172142" : "#F6F0E7",
+                letterSpacing: 0,
+              }}
+            >
+              {notesTitle}
+            </h1>
+            {notesSubtitle && (
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: 12,
+                  fontWeight: 680,
+                  color:
+                    mode === "light"
+                      ? "rgba(69,76,112,0.58)"
+                      : "rgba(238,242,255,0.56)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: 260,
+                }}
+              >
+                {notesSubtitle}
+              </p>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            {(["list", "grid"] as const).map((modeName) => (
+              <button
+                key={modeName}
+                onClick={() => setViewMode(modeName)}
+                style={{
+                  width: 42,
+                  height: 42,
+                  border: "none",
+                  outline: "none",
+                  borderRadius: 14,
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                  backgroundImage:
+                    viewMode === modeName
+                      ? "linear-gradient(145deg, #cabdf3, #a991df)"
+                      : "none",
+                  backgroundColor:
+                    viewMode === modeName
+                      ? "transparent"
+                      : mode === "light"
+                        ? "rgba(255,255,255,0.52)"
+                        : "rgba(255,255,255,0.08)",
+                  boxShadow:
+                    viewMode === modeName
+                      ? "inset 0 1px 0 rgba(255,255,255,0.72), 0 9px 22px rgba(88,70,150,0.18)"
+                      : "inset 0 1px 0 rgba(255,255,255,0.48), 0 8px 20px rgba(59,65,104,0.10)",
+                  color: viewMode === modeName ? "#EFE8FF" : colors.textMuted,
+                }}
+              >
+                {modeName === "list" ? (
+                  <ListIcon size={18} strokeWidth={2.3} />
+                ) : (
+                  <Grid2X2 size={18} strokeWidth={2.1} />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            paddingLeft: 2,
+            paddingRight: 8,
+          }}
+        >
+          <NoteList
+            notes={visibleNotes}
+            activeId={activeId}
+            onSelect={(note) => {
+              setActiveId(note.id);
+              setViewMode("list");
+            }}
+            onDelete={deleteNote}
+            onRestore={restoreNote}
+            onPermanentDelete={permanentlyDeleteNote}
+            onDuplicate={duplicateNote}
+            onFavorite={(note) =>
+              updateNote(note.id, { starred: !note.starred })
+            }
+            onPin={(note) => updateNote(note.id, { pinned: !note.pinned })}
+            isTrashView={activeFilter === "trash"}
+            isLoading={isLoadingNotes}
+            newNoteId={newNoteId}
+            viewMode={viewMode}
+          />
+        </div>
+      </section>
+
+    {viewMode === "list" && (
+  <section
+    style={{
+      position: "relative",
+      minWidth: 0,
+      minHeight: 0,
+      overflow: "hidden",
+      borderRadius: 24,
+      marginInline: 0,
+
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr)",
+      gridTemplateRows: "minmax(0, 1fr)",
+      padding: "14px clamp(10px, 1.2vw, 18px)",
+      gap: 18,
+      alignItems: "stretch",
+
+      background:
+        mode === "light"
+          ? `
+            linear-gradient(135deg, rgba(255,255,255,0.46) 0%, rgba(246,248,255,0.22) 42%, rgba(225,232,240,0.18) 100%),
+            radial-gradient(circle at 14% 10%, rgba(255,255,255,0.70), transparent 30%),
+            radial-gradient(circle at 70% 18%, rgba(169,186,197,0.24), transparent 36%),
+            radial-gradient(circle at 80% 88%, rgba(163,193,242,0.20), transparent 42%),
+            linear-gradient(145deg, rgba(255,255,255,0.20), rgba(221,228,246,0.12))
+          `
+          : `
+            radial-gradient(circle at 58% 34%, rgba(139,92,246,0.16), transparent 30%),
+            radial-gradient(circle at 34% 70%, rgba(34,211,238,0.08), transparent 34%),
+            radial-gradient(circle at 88% 86%, rgba(48,84,150,0.18), transparent 34%),
+            radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(5,13,28,0.18) 100%),
+            linear-gradient(145deg, rgba(83,109,168,0.35), rgba(30,57,104,0.56))
+          `,
+      border:
+        mode === "light"
+          ? "1px solid rgba(255,255,255,0.72)"
+          : "1px solid rgba(255,255,255,0.12)",
+      backdropFilter: "blur(44px) saturate(215%)",
+      WebkitBackdropFilter: "blur(44px) saturate(215%)",
+
+      boxShadow:
+        mode === "light"
+          ? "inset 0 1px 0 rgba(255,255,255,0.86), inset 0 -1px 0 rgba(130,118,176,0.12), inset 20px 0 54px rgba(255,255,255,0.16), 0 20px 40px rgba(36,42,76,0.08), 0 4px 10px rgba(36,42,76,0.04)"
+          : "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(7,14,30,0.16), 0 36px 90px rgba(0,0,0,0.30)",
+    }}
+  >
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 1,
+        zIndex: 0,
+        pointerEvents: "none",
+        borderRadius: 23,
+        background:
+          mode === "light"
+            ? `
+              linear-gradient(115deg, rgba(255,255,255,0.28), transparent 28%),
+              linear-gradient(292deg, rgba(255,255,255,0.16), transparent 34%)
+            `
+            : "linear-gradient(115deg, rgba(255,255,255,0.08), transparent 30%)",
+        opacity: mode === "light" ? 0.56 : 0.42,
+      }}
+    />
+
+    <button
+      type="button"
+      style={{
+        position: "absolute",
+        right: 24,
+        top: 18,
+        zIndex: 5,
+        height: 42,
+        border: "1px solid rgba(255,255,255,0.13)",
+        borderRadius: 15,
+        padding: "0 18px",
+        display: "none",
+        alignItems: "center",
+        gap: 10,
+        background:
+          "linear-gradient(180deg, rgba(35,54,91,0.92), rgba(24,41,76,0.84))",
+        color: "#F4EFE8",
+        fontSize: 13,
+        fontWeight: 700,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.16), 0 12px 28px rgba(0,0,0,0.22)",
+        backdropFilter: "blur(18px) saturate(150%)",
+        WebkitBackdropFilter: "blur(18px) saturate(150%)",
+      }}
+    >
+      <SlidersHorizontal size={17} strokeWidth={1.9} />
+      Note Options
+    </button>
+
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        left: "8%",
+        right: "16%",
+        top: "10%",
+        bottom: "13%",
+        zIndex: 0,
+        pointerEvents: "none",
+        backgroundImage: `
+          radial-gradient(circle at 44% 28%, rgba(255,255,255,0.42), transparent 24%),
+          radial-gradient(circle at 40% 48%, rgba(169,186,197,0.24), transparent 42%),
+          radial-gradient(circle at 30% 74%, rgba(34,211,238,0.10), transparent 30%),
+          radial-gradient(ellipse at 42% 88%, rgba(12,20,48,0.18), transparent 58%)
+        `,
+        filter: "blur(18px)",
+        opacity: mode === "light" ? 0.36 : 0.86,
+      }}
+    />
+
+    {/* Editor area */}
+    <div
+      style={{
+        position: "relative",
+        zIndex: 1,
+        minWidth: 0,
+        minHeight: 0,
+        height: "100%",
+        overflow: "visible",
+        display: "grid",
+        placeItems: "stretch",
+        padding: "6px clamp(8px, 1.2vw, 16px) 4px",
+        boxSizing: "border-box",
+      }}
+    >
+      <NoteEditor
+        note={selectedNote}
+        onChange={(id, title, body) => updateNoteText(id, title, body)}
+        onUpdate={updateNote}
+        onDelete={deleteNote}
+        onCreateNote={() => void createAndSelectNote()}
+        saveStatus={saveStatus}
+      />
+    </div>
+
+  </section>
+)}
+    </div>
+  );
+}
