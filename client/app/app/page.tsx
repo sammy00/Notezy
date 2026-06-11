@@ -7,20 +7,24 @@ import { getStoredAuthToken } from "@/features/auth/authClient";
 
 export default function ProtectedAppPage() {
   const router = useRouter();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const hasToken = Boolean(getStoredAuthToken());
+    const checkAuth = () => {
+      const hasToken = Boolean(getStoredAuthToken());
 
-    if (!hasToken) {
-      router.replace("/login");
-      return;
-    }
+      if (!hasToken) {
+        router.replace("/login");
+        return;
+      }
 
-    setIsCheckingAuth(false);
+      setIsAuthenticated(true);
+    };
+
+    window.requestAnimationFrame(checkAuth);
   }, [router]);
 
-  if (isCheckingAuth) {
+  if (!isAuthenticated) {
     return (
       <div
         style={{

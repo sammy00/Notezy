@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useDragControls } from "framer-motion";
 import AppLayout from "@/components/layout/AppLayout";
 import NoteWorkspace from "@/features/notes/NoteSpace";
@@ -13,37 +14,87 @@ type AppState = {
 
 const NOTEZY_ICON = "/icons/575d6b91-2f68-446b-a345-10eb04b8383f.png";
 const DESKTOP_BACKGROUND = "/backgrounds/Bg-Desk.jpg";
+const NOTEZY_DESKTOP_STATE_KEY = "notezy-desktop-state";
+const DEFAULT_NOTEZY_STATE: AppState = {
+  open: true,
+  minimized: false,
+  maximized: true,
+};
+
+function readDesktopState() {
+  if (typeof window === "undefined") {
+    return DEFAULT_NOTEZY_STATE;
+  }
+
+  try {
+    const savedState = localStorage.getItem(NOTEZY_DESKTOP_STATE_KEY);
+
+    if (!savedState) {
+      return DEFAULT_NOTEZY_STATE;
+    }
+
+    const parsedState = JSON.parse(savedState) as Partial<AppState>;
+
+    return {
+      open: parsedState.open ?? DEFAULT_NOTEZY_STATE.open,
+      minimized: parsedState.minimized ?? DEFAULT_NOTEZY_STATE.minimized,
+      maximized: parsedState.maximized ?? DEFAULT_NOTEZY_STATE.maximized,
+    };
+  } catch {
+    return DEFAULT_NOTEZY_STATE;
+  }
+}
+
+function saveDesktopState(state: AppState) {
+  localStorage.setItem(NOTEZY_DESKTOP_STATE_KEY, JSON.stringify(state));
+}
 
 export default function NotezyDesktop() {
   const dragControls = useDragControls();
-  const [notezy, setNotezy] = useState<AppState>({
-    open: true,
-    minimized: false,
-    maximized: true,
-  });
+  const [notezy, setNotezy] = useState<AppState>(DEFAULT_NOTEZY_STATE);
+  const [stateLoaded, setStateLoaded] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setNotezy(readDesktopState());
+      setStateLoaded(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const updateNotezyState = (nextState: AppState | ((current: AppState) => AppState)) => {
+    setNotezy((current) => {
+      const resolvedState =
+        typeof nextState === "function" ? nextState(current) : nextState;
+
+      saveDesktopState(resolvedState);
+      return resolvedState;
+    });
+  };
 
   const openApp = () =>
-    setNotezy({
+    updateNotezyState({
       open: true,
       minimized: false,
-      maximized: true,
+      maximized: notezy.maximized,
     });
 
   const closeApp = () =>
-    setNotezy({
+    updateNotezyState({
       open: false,
       minimized: false,
-      maximized: true,
+      maximized: notezy.maximized,
     });
 
   const minimizeApp = () =>
-    setNotezy((current) => ({
+    updateNotezyState((current) => ({
       ...current,
       minimized: true,
     }));
 
   const maximizeApp = (maximized: boolean) =>
-    setNotezy((current) => ({
+    updateNotezyState((current) => ({
       ...current,
       maximized,
     }));
@@ -66,7 +117,7 @@ export default function NotezyDesktop() {
         }}
       />
 
-      {notezy.open && !notezy.minimized && (
+      {stateLoaded && notezy.open && !notezy.minimized && (
         <div
           className="absolute z-10"
           style={{
@@ -85,18 +136,18 @@ export default function NotezyDesktop() {
         </div>
       )}
 
-      {(!notezy.open || notezy.minimized) && (
+      {stateLoaded && (!notezy.open || notezy.minimized) && (
         <>
           <button
             type="button"
             onClick={openApp}
             aria-label="Open Notezy"
-            className="absolute left-8 top-8 z-20 flex w-[86px] flex-col items-center gap-2 border-0 bg-transparent p-0"
+            className="absolute left-8 top-8 z-20 flex w-21.5 flex-col items-center gap-2 border-0 bg-transparent p-0"
             style={{
               color: "#1F2A52",
             }}
           >
-            <img
+            <Image
               src={NOTEZY_ICON}
               alt=""
               width={64}
@@ -135,7 +186,7 @@ export default function NotezyDesktop() {
                 color: "#1F2A52",
               }}
             >
-              <img
+              <Image
                 src={NOTEZY_ICON}
                 alt=""
                 width={34}
