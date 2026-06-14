@@ -34,7 +34,15 @@ const noteSwitchTransition = {
   ease: [0.22, 0.61, 0.36, 1],
 } as const;
 
-function EmptyState({ onCreateNote }: { onCreateNote?: () => void }) {
+function EmptyState({
+  onCreateNote,
+  recentNotes = [],
+}: {
+  onCreateNote?: () => void;
+  recentNotes?: Note[];
+}) {
+  const visibleRecentNotes = recentNotes.slice(0, 3);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -43,18 +51,19 @@ function EmptyState({ onCreateNote }: { onCreateNote?: () => void }) {
       style={{
         width: "100%",
         height: "100%",
-        display: "grid",
-        placeItems: "center",
-        padding: 32,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "clamp(24px, 3vw, 42px)",
       }}
     >
       <div
         style={{
-          width: "min(440px, 100%)",
+          width: "min(820px, 100%)",
           textAlign: "center",
           display: "grid",
           justifyItems: "center",
-          gap: 14,
+          gap: 18,
         }}
       >
         <div
@@ -109,6 +118,132 @@ function EmptyState({ onCreateNote }: { onCreateNote?: () => void }) {
             Select a note from the list or create a new note to start writing.
           </p>
         </div>
+        <div
+          style={{
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+            gap: 12,
+            marginTop: 2,
+          }}
+        >
+          <EmptyStatePanel title="Recent Notes">
+            <div style={{ display: "grid", gap: 8 }}>
+              {visibleRecentNotes.length ? (
+                visibleRecentNotes.map((recentNote) => (
+                  <div key={recentNote.id} style={{ minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: "#25315A",
+                        fontSize: 12,
+                        fontWeight: 760,
+                      }}
+                    >
+                      {recentNote.title || "Untitled Note"}
+                    </p>
+                    <p
+                      style={{
+                        margin: "2px 0 0",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: "rgba(67,75,119,0.58)",
+                        fontSize: 10.5,
+                        fontWeight: 620,
+                      }}
+                    >
+                      {recentNote.preview || "No preview yet"}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    color: "rgba(67,75,119,0.58)",
+                    fontSize: 12,
+                    fontWeight: 620,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Your newest notes will appear here.
+                </p>
+              )}
+            </div>
+          </EmptyStatePanel>
+
+          <EmptyStatePanel title="Quick Notes">
+            {["Capture an idea", "Draft a reminder", "Save a useful link"].map(
+              (item) => (
+                <div
+                  key={item}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                    color: "rgba(67,75,119,0.70)",
+                    fontSize: 11.5,
+                    fontWeight: 650,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: "#8B5CF6",
+                      opacity: 0.58,
+                    }}
+                  />
+                  {item}
+                </div>
+              ),
+            )}
+          </EmptyStatePanel>
+
+          <EmptyStatePanel title="Keyboard Shortcuts">
+            {[
+              ["Ctrl K", "Search"],
+              ["Ctrl B", "Bold"],
+              ["Esc", "Close menus"],
+            ].map(([keys, label]) => (
+              <div
+                key={keys}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 8,
+                  color: "rgba(67,75,119,0.70)",
+                  fontSize: 11.5,
+                  fontWeight: 650,
+                }}
+              >
+                <span>{label}</span>
+                <kbd
+                  style={{
+                    borderRadius: 999,
+                    padding: "4px 8px",
+                    background: "rgba(255,255,255,0.72)",
+                    color: "rgba(55,64,98,0.70)",
+                    fontSize: 10,
+                    fontWeight: 850,
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.82), 0 1px 2px rgba(70,78,120,0.06)",
+                  }}
+                >
+                  {keys}
+                </kbd>
+              </div>
+            ))}
+          </EmptyStatePanel>
+        </div>
         <button
           type="button"
           onClick={onCreateNote}
@@ -137,6 +272,41 @@ function EmptyState({ onCreateNote }: { onCreateNote?: () => void }) {
   );
 }
 
+function EmptyStatePanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        minHeight: 116,
+        borderRadius: 18,
+        padding: 14,
+        textAlign: "left",
+        background: "rgba(255,252,246,0.70)",
+        border: "1px solid rgba(255,255,255,0.78)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.92), 0 12px 24px rgba(58,64,104,0.08)",
+      }}
+    >
+      <p
+        style={{
+          margin: "0 0 10px",
+          color: "#18254B",
+          fontSize: 12,
+          fontWeight: 850,
+        }}
+      >
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 function getEditableBody(note: Note) {
   const lines = note.content.split("\n");
 
@@ -153,6 +323,7 @@ function getEditableBody(note: Note) {
 
 type Props = {
   note: Note | null | undefined;
+  recentNotes?: Note[];
   onChange?: (id: string, title: string, body: string) => void;
   onUpdate?: (id: string, changes: Partial<Note>) => void;
   onDelete?: (id: string) => void;
@@ -162,6 +333,7 @@ type Props = {
 
 export default function NoteEditor({
   note,
+  recentNotes,
   onChange,
   onUpdate,
   onDelete,
@@ -258,7 +430,9 @@ export default function NoteEditor({
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  if (!note) return <EmptyState onCreateNote={onCreateNote} />;
+  if (!note) {
+    return <EmptyState onCreateNote={onCreateNote} recentNotes={recentNotes} />;
+  }
 
   const t = NOTE_EDITOR_THEME[note.tone] ?? NOTE_EDITOR_THEME.paper;
   const bodyText = getEditableBody(note);

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { loginWithEmail, signupWithEmail } from "@/features/auth/authClient";
 
@@ -12,7 +11,6 @@ type Props = {
 const NOTEZY_ICON = "/icons/575d6b91-2f68-446b-a345-10eb04b8383f.png";
 
 export default function AuthScreen({ mode }: Props) {
-  const router = useRouter();
   const isSignup = mode === "signup";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +30,7 @@ export default function AuthScreen({ mode }: Props) {
         await loginWithEmail(email, password);
       }
 
-      router.replace("/app");
+      window.location.replace("/app");
     } catch (authError) {
       setError(
         authError instanceof Error

@@ -721,11 +721,11 @@ export default function NoteWorkspace() {
       background:
         mode === "light"
           ? `
-            linear-gradient(135deg, rgba(255,255,255,0.46) 0%, rgba(246,248,255,0.22) 42%, rgba(225,232,240,0.18) 100%),
-            radial-gradient(circle at 14% 10%, rgba(255,255,255,0.70), transparent 30%),
-            radial-gradient(circle at 70% 18%, rgba(169,186,197,0.24), transparent 36%),
-            radial-gradient(circle at 80% 88%, rgba(163,193,242,0.20), transparent 42%),
-            linear-gradient(145deg, rgba(255,255,255,0.20), rgba(221,228,246,0.12))
+            linear-gradient(135deg, rgba(255,255,255,0.58) 0%, rgba(246,248,255,0.34) 42%, rgba(225,232,240,0.24) 100%),
+            radial-gradient(circle at 14% 10%, rgba(255,255,255,0.48), transparent 30%),
+            radial-gradient(circle at 70% 18%, rgba(169,186,197,0.16), transparent 36%),
+            radial-gradient(circle at 80% 88%, rgba(163,193,242,0.13), transparent 42%),
+            linear-gradient(145deg, rgba(255,255,255,0.32), rgba(221,228,246,0.18))
           `
           : `
             radial-gradient(circle at 58% 34%, rgba(139,92,246,0.16), transparent 30%),
@@ -738,12 +738,12 @@ export default function NoteWorkspace() {
         mode === "light"
           ? "1px solid rgba(255,255,255,0.72)"
           : "1px solid rgba(255,255,255,0.12)",
-      backdropFilter: "blur(44px) saturate(215%)",
-      WebkitBackdropFilter: "blur(44px) saturate(215%)",
+      backdropFilter: "blur(34px) saturate(175%)",
+      WebkitBackdropFilter: "blur(34px) saturate(175%)",
 
       boxShadow:
         mode === "light"
-          ? "inset 0 1px 0 rgba(255,255,255,0.86), inset 0 -1px 0 rgba(130,118,176,0.12), inset 20px 0 54px rgba(255,255,255,0.16), 0 20px 40px rgba(36,42,76,0.08), 0 4px 10px rgba(36,42,76,0.04)"
+          ? "inset 0 1px 0 rgba(255,255,255,0.80), inset 0 -1px 0 rgba(130,118,176,0.08), inset 14px 0 38px rgba(255,255,255,0.10), 0 16px 32px rgba(36,42,76,0.065), 0 3px 8px rgba(36,42,76,0.035)"
           : "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(7,14,30,0.16), 0 36px 90px rgba(0,0,0,0.30)",
     }}
   >
@@ -758,11 +758,11 @@ export default function NoteWorkspace() {
         background:
           mode === "light"
             ? `
-              linear-gradient(115deg, rgba(255,255,255,0.28), transparent 28%),
-              linear-gradient(292deg, rgba(255,255,255,0.16), transparent 34%)
+              linear-gradient(115deg, rgba(255,255,255,0.18), transparent 28%),
+              linear-gradient(292deg, rgba(255,255,255,0.10), transparent 34%)
             `
             : "linear-gradient(115deg, rgba(255,255,255,0.08), transparent 30%)",
-        opacity: mode === "light" ? 0.56 : 0.42,
+        opacity: mode === "light" ? 0.40 : 0.42,
       }}
     />
 
@@ -806,13 +806,13 @@ export default function NoteWorkspace() {
         zIndex: 0,
         pointerEvents: "none",
         backgroundImage: `
-          radial-gradient(circle at 44% 28%, rgba(255,255,255,0.42), transparent 24%),
-          radial-gradient(circle at 40% 48%, rgba(169,186,197,0.24), transparent 42%),
-          radial-gradient(circle at 30% 74%, rgba(34,211,238,0.10), transparent 30%),
-          radial-gradient(ellipse at 42% 88%, rgba(12,20,48,0.18), transparent 58%)
+          radial-gradient(circle at 44% 28%, rgba(255,255,255,0.30), transparent 24%),
+          radial-gradient(circle at 40% 48%, rgba(169,186,197,0.16), transparent 42%),
+          radial-gradient(circle at 30% 74%, rgba(34,211,238,0.06), transparent 30%),
+          radial-gradient(ellipse at 42% 88%, rgba(12,20,48,0.12), transparent 58%)
         `,
-        filter: "blur(18px)",
-        opacity: mode === "light" ? 0.36 : 0.86,
+        filter: "blur(14px)",
+        opacity: mode === "light" ? 0.24 : 0.68,
       }}
     />
 
@@ -833,6 +833,7 @@ export default function NoteWorkspace() {
     >
       <NoteEditor
         note={selectedNote}
+        recentNotes={visibleNotes.filter((note) => !note.trashed)}
         onChange={(id, title, body) => updateNoteText(id, title, body)}
         onUpdate={updateNote}
         onDelete={deleteNote}

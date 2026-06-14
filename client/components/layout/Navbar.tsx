@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell, Palette, Search, Settings, Tag, X } from "lucide-react";
+import { Bell, Search, Settings, Sun, Tag, X } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  clearAuthSession,
+  getStoredAuthToken,
+  getStoredAuthUser,
+} from "@/features/auth/authClient";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import { designSystem } from "@/shared/theme/DesignSystem";
 
@@ -20,19 +25,106 @@ const ACTIONS = [
     icon: Bell,
     dot: true,
   },
-  {
-    label: "Theme",
-    icon: Palette,
-  },
 ];
 
 const NOTE_SEARCH_EVENT = "notezy:set-note-search";
+
+function ProfileMenuButton({
+  label,
+  danger,
+  onClick,
+}: {
+  label: string;
+  danger?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: "100%",
+        height: 32,
+        border: "none",
+        borderRadius: 10,
+        padding: "0 10px",
+        background: "transparent",
+        color: danger ? "#D94D5B" : "rgba(32,40,77,0.82)",
+        fontSize: 12,
+        fontWeight: 800,
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ProfileInfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        padding: "6px 4px",
+      }}
+    >
+      <span
+        style={{
+          color: "rgba(67,75,119,0.55)",
+          fontSize: 10.5,
+          fontWeight: 800,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: "rgba(32,40,77,0.84)",
+          fontSize: 11,
+          fontWeight: 800,
+          textAlign: "right",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default function Navbar() {
   const { mode, colors } = useTheme();
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileView, setProfileView] = useState<
+    "menu" | "profile" | "settings" | "logout"
+  >("menu");
+  const [brightness, setBrightness] = useState(0.8);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const isLoggedIn = Boolean(getStoredAuthToken());
+  const profileName = authUser?.name ?? "Sign in";
+  const initials =
+    authUser?.name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ?? "N";
 
   const updateSearch = (value: string) => {
     setSearchQuery(value);
@@ -73,6 +165,21 @@ export default function Navbar() {
     return () =>
       window.removeEventListener(NOTE_SEARCH_EVENT, handleSearchSync);
   }, []);
+
+  useEffect(() => {
+    const syncAuthUser = () => setAuthUser(getStoredAuthUser());
+
+    window.addEventListener("notezy:auth-changed", syncAuthUser);
+
+    return () => window.removeEventListener("notezy:auth-changed", syncAuthUser);
+  }, []);
+
+  const logout = () => {
+    clearAuthSession();
+    setProfileOpen(false);
+    setProfileView("menu");
+    window.location.replace("/login");
+  };
 
   const searchGlass =
     mode === "light"
@@ -248,6 +355,318 @@ export default function Navbar() {
               )}
             </motion.button>
           ))}
+
+          <motion.div
+            whileHover={{ y: -1 }}
+            transition={{ type: "spring", stiffness: 240, damping: 20 }}
+            className="hidden xl:flex items-center"
+            style={{
+              ...actionGlass,
+              ...(mode === "dark"
+                ? {
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.095), rgba(255,255,255,0.052))",
+                    border: "1px solid rgba(255,255,255,0.13)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18)",
+                  }
+                : {}),
+              width: 128,
+              height: 48,
+              borderRadius: 16,
+              gap: 8,
+              padding: "0 12px",
+            }}
+          >
+            <Sun
+              size={15}
+              color={mode === "light" ? "#7C6FA6" : "#AAB6CC"}
+              strokeWidth={2.1}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={brightness}
+              aria-label="Brightness"
+              onChange={(event) => setBrightness(Number(event.target.value))}
+              className="min-w-0 flex-1 accent-[#8B5CF6]"
+            />
+            <span
+              style={{
+                width: 28,
+                textAlign: "right",
+                color:
+                  mode === "light"
+                    ? "rgba(76,86,118,0.68)"
+                    : colors.textMuted,
+                fontSize: 11,
+                fontWeight: 850,
+              }}
+            >
+              {Math.round(brightness * 100)}%
+            </span>
+          </motion.div>
+
+          <div className="relative">
+            <motion.button
+              type="button"
+              aria-label="Open profile menu"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              onClick={() => {
+                setProfileOpen((open) => {
+                  const nextOpen = !open;
+
+                  if (nextOpen) {
+                    setProfileView("menu");
+                  }
+
+                  return nextOpen;
+                });
+              }}
+              className="grid place-items-center"
+              style={{
+                ...actionGlass,
+                ...(mode === "dark"
+                  ? {
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,0.095), rgba(255,255,255,0.052))",
+                      border: "1px solid rgba(255,255,255,0.13)",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18)",
+                    }
+                  : {}),
+                width: 48,
+                height: 48,
+                borderRadius: 16,
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #C4B5FD, #7C3AED)",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "white",
+                  fontSize: 10,
+                  fontWeight: 850,
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.48), 0 8px 18px rgba(103,72,190,0.22)",
+                }}
+              >
+                {initials}
+              </span>
+            </motion.button>
+
+            {profileOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.96, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: 4, scale: 0.96, filter: "blur(5px)" }}
+                transition={{ duration: 0.16, ease: [0.22, 0.61, 0.36, 1] }}
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 58,
+                  zIndex: 250,
+                  width: 246,
+                  padding: 9,
+                  borderRadius: 17,
+                  background: "#FFFCF6",
+                  border: "1px solid rgba(231,224,214,0.96)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,1), 0 18px 36px rgba(50,42,78,0.18), 0 3px 10px rgba(50,42,78,0.10)",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    right: 18,
+                    top: -6,
+                    width: 12,
+                    height: 12,
+                    transform: "rotate(45deg)",
+                    background: "#FFFCF6",
+                    borderLeft: "1px solid rgba(231,224,214,0.96)",
+                    borderTop: "1px solid rgba(231,224,214,0.96)",
+                  }}
+                />
+                {isLoggedIn && profileView === "menu" ? (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "6px 7px 10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #C4B5FD, #7C3AED)",
+                          display: "grid",
+                          placeItems: "center",
+                          color: "white",
+                          fontSize: 11,
+                          fontWeight: 850,
+                          boxShadow:
+                            "inset 0 1px 0 rgba(255,255,255,0.48), 0 8px 18px rgba(103,72,190,0.22)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className="m-0 truncate text-[12px] font-black leading-tight"
+                          style={{ color: "#1f2b56" }}
+                        >
+                          {profileName}
+                        </p>
+                        <p
+                          className="m-0 truncate text-[10px] font-semibold leading-tight"
+                          style={{ color: "#7D7895" }}
+                        >
+                          Free Plan
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        height: 1,
+                        margin: "0 2px 6px",
+                        background: "rgba(223,219,239,0.92)",
+                      }}
+                    />
+                    <ProfileMenuButton
+                      label="Profile"
+                      onClick={() => setProfileView("profile")}
+                    />
+                    <ProfileMenuButton
+                      label="Settings"
+                      onClick={() => setProfileView("settings")}
+                    />
+                    <ProfileMenuButton
+                      danger
+                      label="Logout"
+                      onClick={() => setProfileView("logout")}
+                    />
+                  </>
+                ) : isLoggedIn && profileView === "profile" ? (
+                  <>
+                    <ProfileMenuButton
+                      label="Back"
+                      onClick={() => setProfileView("menu")}
+                    />
+                    <div
+                      style={{
+                        height: 1,
+                        margin: "4px 2px 6px",
+                        background: "rgba(223,219,239,0.92)",
+                      }}
+                    />
+                    <ProfileInfoRow label="Name" value={authUser?.name ?? "Notezy User"} />
+                    <ProfileInfoRow label="Email" value={authUser?.email ?? "No email"} />
+                    <ProfileInfoRow label="Member Since" value="Current account" />
+                    <ProfileInfoRow label="Plan" value="Free Plan" />
+                  </>
+                ) : isLoggedIn && profileView === "settings" ? (
+                  <>
+                    <ProfileMenuButton
+                      label="Back"
+                      onClick={() => setProfileView("menu")}
+                    />
+                    <div
+                      style={{
+                        height: 1,
+                        margin: "4px 2px 6px",
+                        background: "rgba(223,219,239,0.92)",
+                      }}
+                    />
+                    <ProfileInfoRow label="Theme" value={mode === "dark" ? "Dark" : "Light"} />
+                    <ProfileInfoRow label="Brightness" value={`${Math.round(brightness * 100)}%`} />
+                    <ProfileInfoRow label="Default Color" value="Classic Paper" />
+                    <ProfileInfoRow label="Font Size" value="16 px" />
+                    <ProfileInfoRow label="Auto Save" value="On" />
+                  </>
+                ) : isLoggedIn && profileView === "logout" ? (
+                  <>
+                    <div style={{ padding: "4px 5px 8px" }}>
+                      <p
+                        className="m-0 text-[13px] font-black"
+                        style={{ color: "#1f2b56" }}
+                      >
+                        Logout?
+                      </p>
+                      <p
+                        className="m-0 mt-1 text-[11px] font-semibold leading-snug"
+                        style={{ color: "rgba(67,75,119,0.62)" }}
+                      >
+                        You will need to sign in again to access your saved notes.
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, padding: "0 2px 2px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setProfileView("menu")}
+                        style={{
+                          flex: 1,
+                          height: 32,
+                          border: "1px solid rgba(226,219,210,0.92)",
+                          borderRadius: 11,
+                          background: "rgba(255,255,255,0.72)",
+                          color: "#4C5676",
+                          fontSize: 12,
+                          fontWeight: 850,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={logout}
+                        style={{
+                          flex: 1,
+                          height: 32,
+                          border: "none",
+                          borderRadius: 11,
+                          background: "#EF4444",
+                          color: "#FFFFFF",
+                          fontSize: 12,
+                          fontWeight: 850,
+                          cursor: "pointer",
+                          boxShadow: "0 10px 20px rgba(239,68,68,0.22)",
+                        }}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ProfileMenuButton
+                      label="Sign in"
+                      onClick={() => window.location.assign("/login")}
+                    />
+                    <ProfileMenuButton
+                      label="Create account"
+                      onClick={() => window.location.assign("/signup")}
+                    />
+                  </>
+                )}
+              </motion.div>
+            )}
+          </div>
         </div>
       </div>
 

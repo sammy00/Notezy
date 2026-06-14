@@ -9,7 +9,6 @@ import ReactDOM from "react-dom";
 import { motion, AnimatePresence, DragControls } from "framer-motion";
 import WindowBar from "./WindowBar";
 import { useTheme } from "@/shared/theme/ThemeProvider";
-import { useRouter } from "next/navigation";
 import {
   clearAuthSession,
   getStoredAuthToken,
@@ -37,6 +36,15 @@ type SidebarItem = {
   label: string;
   icon: LucideIcon;
 };
+
+const CATEGORY_ACCENTS: Record<string, string> = {
+  Personal: "#8B5CF6",
+  Work: "#3B82F6",
+  Journal: "#22A06B",
+  Ideas: "#F59E0B",
+};
+
+const CUSTOM_CATEGORY_ACCENT = "#A78BFA";
 
 const MAIN_ITEMS: SidebarItem[] = [
   { label: "All Notes", icon: FileText },
@@ -131,16 +139,30 @@ function SidebarButton({
   collapsed,
   onClick,
   mode,
+  iconAccent,
 }: {
   item: SidebarItem;
   active: boolean;
   collapsed: boolean;
   onClick: () => void;
   mode: "light" | "dark";
+  iconAccent?: string;
 }) {
   const Icon = item.icon;
   const [hovered, setHovered] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const categoryIconColor =
+    mode === "dark"
+      ? active
+        ? "#F8FAFC"
+        : iconAccent
+          ? `${iconAccent}DD`
+          : undefined
+      : active
+        ? iconAccent ?? "#8B5CF6"
+        : iconAccent
+          ? `${iconAccent}CC`
+          : undefined;
   
 
   return (
@@ -196,7 +218,8 @@ function SidebarButton({
           strokeWidth={2.1}
           style={{
             color:
-              mode === "dark"
+              categoryIconColor ??
+              (mode === "dark"
                   ? active
                     ? "#DED3FF"
                     : hovered
@@ -204,9 +227,13 @@ function SidebarButton({
                     : "#AAB6CC"
                 : active
                   ? "#8B5CF6"
-                  : hovered
-                    ? "#3d4870"
-                    : "#5b6786",
+                : hovered
+                  ? "#3d4870"
+                    : "#5b6786"),
+            filter:
+              iconAccent && (hovered || active)
+                ? `drop-shadow(0 0 8px ${iconAccent}33)`
+                : "none",
             flexShrink: 0,
           }}
         />
@@ -285,6 +312,7 @@ function CustomCategoryRow({
         collapsed={collapsed}
         onClick={onSelect}
         mode={mode}
+        iconAccent={CUSTOM_CATEGORY_ACCENT}
       />
     );
   }
@@ -310,7 +338,7 @@ function CustomCategoryRow({
         <Map
           size={16}
           strokeWidth={2.1}
-          style={{ color: mode === "dark" ? "#AAB6CC" : "#8B5CF6" }}
+          style={{ color: mode === "dark" ? `${CUSTOM_CATEGORY_ACCENT}DD` : CUSTOM_CATEGORY_ACCENT }}
         />
         <input
           autoFocus
@@ -394,15 +422,19 @@ function CustomCategoryRow({
           color:
             mode === "dark"
               ? active
-                ? "#DED3FF"
+                ? "#F8FAFC"
                 : hovered
-                  ? "#F8FAFC"
-                  : "#AAB6CC"
+                  ? `${CUSTOM_CATEGORY_ACCENT}EE`
+                  : `${CUSTOM_CATEGORY_ACCENT}DD`
               : active
-                ? "#8B5CF6"
+                ? CUSTOM_CATEGORY_ACCENT
                 : hovered
-                  ? "#3d4870"
-                  : "#5b6786",
+                  ? `${CUSTOM_CATEGORY_ACCENT}EE`
+                  : `${CUSTOM_CATEGORY_ACCENT}CC`,
+          filter:
+            hovered || active
+              ? `drop-shadow(0 0 8px ${CUSTOM_CATEGORY_ACCENT}33)`
+              : "none",
           flexShrink: 0,
         }}
       />
@@ -587,7 +619,6 @@ export default function Sidebar({
   dragControls,
 }: Props) {
 
-  const router = useRouter();
   const { mode } = useTheme();
 
   const [active, setActive] = useState("All Notes");
@@ -629,7 +660,7 @@ export default function Sidebar({
     clearAuthSession();
     setProfileMenuOpen(false);
     setProfileMenuView("menu");
-    router.replace("/login");
+    window.location.replace("/login");
   };
 
   const toggleProfileMenu = () => {
@@ -793,7 +824,7 @@ export default function Sidebar({
   "
   style={{
     position: "relative",
-    padding: "24px 20px 14px",
+    padding: "22px 20px 12px",
 
     borderRadius: 34,
 
@@ -830,9 +861,9 @@ export default function Sidebar({
       "blur(24px) saturate(180%)",
   }}
 >
-      <div className="shrink-0 mb-6">
+      <div className="mb-3 shrink-0">
         <div
-          className="mb-4 flex items-center"
+          className="mb-3 flex items-center"
           style={{
             justifyContent: collapsed ? "center" : "flex-start",
             paddingLeft: collapsed ? 0 : 2,
@@ -913,7 +944,7 @@ export default function Sidebar({
       </div>
 
       {/* ── NEW NOTE ── */}
-      <div className="relative mb-4 shrink-0" style={{ height: 48 }}>
+      <div className="relative mb-2.5 shrink-0" style={{ height: 44 }}>
         {/* Icon-only version */}
         <motion.button
           onClick={createNewNote}
@@ -949,7 +980,7 @@ export default function Sidebar({
       </div>
 
       {/* ── MAIN NAV ── */}
-      <div className="shrink-0 space-y-0.5">
+      <div className="shrink-0 space-y-0.5 pb-1">
         {MAIN_ITEMS.map((item) => (
           <SidebarButton
             key={item.label}
@@ -964,7 +995,7 @@ export default function Sidebar({
 
       {/* ── CATEGORIES ── */}
       <div
-        className="min-h-0 flex-1 pr-1"
+        className="mt-1.5 min-h-0 flex-1 pr-1"
         style={{
           display: "flex",
           flexDirection: "column",
@@ -996,6 +1027,7 @@ export default function Sidebar({
               collapsed={collapsed}
               onClick={() => selectCategory(item.label)}
               mode={mode}
+              iconAccent={CATEGORY_ACCENTS[item.label]}
             />
           ))}
           {customCategories.map((category) => (
@@ -1118,11 +1150,11 @@ export default function Sidebar({
       {/* ── SPACER ── */}
       </div>
 
-      <div className="shrink-0 pt-1">
+      <div className="shrink-0 pt-0">
 
       {/* ── DIVIDER above Trash ── */}
       <div
-        className="mb-1.5 mt-1.5 h-px shrink-0"
+        className="mb-1 mt-1 h-px shrink-0"
         style={{
           background:
             mode === "dark"
@@ -1160,7 +1192,7 @@ export default function Sidebar({
         }}
       />
 
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative", display: "none" }}>
         <button
           type="button"
           onClick={toggleProfileMenu}
@@ -1410,11 +1442,11 @@ export default function Sidebar({
                 <>
                   <ProfileMenuButton
                     label="Sign in"
-                    onClick={() => router.push("/login")}
+                    onClick={() => window.location.assign("/login")}
                   />
                   <ProfileMenuButton
                     label="Create account"
-                    onClick={() => router.push("/signup")}
+                    onClick={() => window.location.assign("/signup")}
                   />
                 </>
               )}
@@ -1425,7 +1457,7 @@ export default function Sidebar({
 
       {/* ── BRIGHTNESS SLIDER ── */}
       <div
-        className="shrink-0 flex items-center px-1"
+        className="hidden shrink-0 items-center px-1"
         style={{
           gap: collapsed ? 0 : 9,
           justifyContent: collapsed ? "center" : "flex-start",
