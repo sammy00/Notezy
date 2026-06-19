@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
-import { Note, NOTE_TONES, NoteTone } from "../models/Note";
+import {
+  Note,
+  NOTE_CATEGORIES,
+  NOTE_TONES,
+  NoteCategory,
+  NoteTone,
+} from "../models/Note";
 
 type NotePayload = {
   title?: unknown;
@@ -17,6 +23,14 @@ type NotePayload = {
 const isNoteTone = (tone: unknown): tone is NoteTone =>
   typeof tone === "string" && NOTE_TONES.includes(tone as NoteTone);
 
+const normalizeNoteCategory = (category: unknown): NoteCategory => {
+  const normalized = typeof category === "string" ? category.trim().toLowerCase() : "";
+
+  return NOTE_CATEGORIES.includes(normalized as NoteCategory)
+    ? (normalized as NoteCategory)
+    : "personal";
+};
+
 const toStringValue = (value: unknown, fallback = "") =>
   typeof value === "string" ? value.trim() : fallback;
 
@@ -28,7 +42,7 @@ const normalizeNotePayload = (data: NotePayload) => {
     content: toStringValue(data.content),
     preview: toStringValue(data.preview),
     tone: isNoteTone(data.tone) ? data.tone : "paper",
-    category: toStringValue(data.category, "Personal") || "Personal",
+    category: normalizeNoteCategory(data.category),
     starred: typeof data.starred === "boolean" ? data.starred : false,
     pinned: typeof data.pinned === "boolean" ? data.pinned : false,
     archived: typeof data.archived === "boolean" ? data.archived : false,
@@ -47,7 +61,9 @@ const normalizeNoteUpdate = (data: NotePayload) => {
   if (typeof data.content === "string") update.content = data.content;
   if (typeof data.preview === "string") update.preview = data.preview.trim();
   if (isNoteTone(data.tone)) update.tone = data.tone;
-  if (typeof data.category === "string") update.category = data.category.trim();
+  if (typeof data.category === "string") {
+    update.category = normalizeNoteCategory(data.category);
+  }
   if (typeof data.starred === "boolean") update.starred = data.starred;
   if (typeof data.pinned === "boolean") update.pinned = data.pinned;
   if (typeof data.archived === "boolean") update.archived = data.archived;

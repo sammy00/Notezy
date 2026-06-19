@@ -1,4 +1,4 @@
-import { Note, NoteTone } from "../types/note";
+import { Note, NoteTone, normalizeNoteCategory } from "../types/note";
 import { formatRelativeNoteDate } from "../utils/formatDate";
 
 type ApiNote = {
@@ -99,7 +99,7 @@ const toNote = (note: ApiNote): Note => ({
   pinned: note.pinned ?? false,
   archived: note.archived ?? false,
   trashed: note.trashed ?? false,
-  category: note.category ?? "Personal",
+  category: normalizeNoteCategory(note.category),
 });
 
 export const fetchNotes = async () => {

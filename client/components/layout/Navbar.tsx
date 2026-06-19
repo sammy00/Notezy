@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell, Search, Settings, Sun, Tag, X } from "lucide-react";
+import { Bell, Moon, Search, Settings, Sun, X } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   clearAuthSession,
@@ -12,10 +12,6 @@ import { useTheme } from "@/shared/theme/ThemeProvider";
 import { designSystem } from "@/shared/theme/DesignSystem";
 
 const ACTIONS = [
-  {
-    label: "Tags",
-    icon: Tag,
-  },
   {
     label: "Settings",
     icon: Settings,
@@ -106,7 +102,7 @@ function ProfileInfoRow({
 }
 
 export default function Navbar() {
-  const { mode, colors } = useTheme();
+  const { mode, colors, toggleTheme } = useTheme();
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
@@ -114,7 +110,6 @@ export default function Navbar() {
   const [profileView, setProfileView] = useState<
     "menu" | "profile" | "settings" | "logout"
   >("menu");
-  const [brightness, setBrightness] = useState(0.8);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isLoggedIn = Boolean(getStoredAuthToken());
   const profileName = authUser?.name ?? "Sign in";
@@ -188,7 +183,7 @@ export default function Navbar() {
             "linear-gradient(180deg, rgba(255,255,255,0.72), rgba(246,246,252,0.42))",
           border: "1px solid rgba(255,255,255,0.76)",
           boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.92), 0 12px 24px rgba(90,95,140,0.08)",
+            "inset 0 1px 0 rgba(255,255,255,0.92), 0 4px 20px rgba(0,0,0,.03), 0 12px 24px rgba(90,95,140,0.08)",
           backdropFilter: "blur(24px) saturate(180%)",
           WebkitBackdropFilter: "blur(24px) saturate(180%)",
         }
@@ -209,27 +204,28 @@ export default function Navbar() {
 
   return (
     <div className="relative w-full">
-      <div className="flex items-center justify-between gap-4">
+      <div className="notezy-navbar-row flex items-center justify-between gap-4">
         <motion.div
           whileHover={{ y: -1 }}
           transition={{ type: "spring", stiffness: 240, damping: 20 }}
-          className="flex w-full max-w-[356px] items-center gap-3 px-[18px]"
+          className="notezy-search-bar flex w-full max-w-[400px] items-center gap-3 px-[22px]"
           style={{
             ...searchGlass,
             ...(mode === "dark"
               ? {
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.055))",
+                  background: "rgba(255,255,255,0.05)",
                   border: searchFocused
-                    ? "1px solid rgba(139,92,246,0.45)"
-                    : "1px solid rgba(255,255,255,0.13)",
+                    ? "1px solid #A78BFA"
+                    : "1px solid rgba(255,255,255,0.08)",
                   boxShadow: searchFocused
-                    ? "inset 0 1px 0 rgba(255,255,255,0.16), 0 0 0 3px rgba(139,92,246,0.10), 0 16px 34px rgba(0,0,0,0.22), 0 0 32px rgba(139,92,246,0.16)"
-                    : "inset 0 1px 0 rgba(255,255,255,0.12), 0 14px 30px rgba(0,0,0,0.18)",
+                    ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 0 0 3px rgba(167,139,250,0.10), 0 14px 28px rgba(5,10,24,0.22)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(5,10,24,0.18)",
+                  backdropFilter: "blur(18px) saturate(150%)",
+                  WebkitBackdropFilter: "blur(18px) saturate(150%)",
                 }
               : {}),
-            height: 48,
-            borderRadius: 17,
+            height: 50,
+            borderRadius: 18,
           }}
         >
           <Search
@@ -309,7 +305,7 @@ export default function Navbar() {
           )}
         </motion.div>
 
-        <div className="flex shrink-0 items-center" style={{ gap: 14 }}>
+        <div className="notezy-navbar-actions flex shrink-0 items-center" style={{ gap: 14 }}>
           {ACTIONS.map(({ label, icon: Icon, dot }) => (
             <motion.button
               key={label}
@@ -325,7 +321,7 @@ export default function Navbar() {
                         "linear-gradient(180deg, rgba(255,255,255,0.095), rgba(255,255,255,0.052))",
                       border: "1px solid rgba(255,255,255,0.13)",
                       boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18)",
+                        "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18), 0 0 18px rgba(167,139,250,0.08)",
                     }
                   : {}),
                 width: 48,
@@ -334,7 +330,7 @@ export default function Navbar() {
               }}
             >
               <Icon
-                size={18}
+                size={20}
                 color={mode === "light" ? "#24315F" : colors.textMuted}
                 strokeWidth={2.2}
               />
@@ -356,8 +352,13 @@ export default function Navbar() {
             </motion.button>
           ))}
 
-          <motion.div
+          <motion.button
+            type="button"
+            aria-label={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={mode === "dark" ? "Light theme" : "Dark theme"}
+            onClick={toggleTheme}
             whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 240, damping: 20 }}
             className="hidden xl:flex items-center"
             style={{
@@ -368,46 +369,37 @@ export default function Navbar() {
                       "linear-gradient(180deg, rgba(255,255,255,0.095), rgba(255,255,255,0.052))",
                     border: "1px solid rgba(255,255,255,0.13)",
                     boxShadow:
-                      "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18)",
+                      "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18), 0 0 18px rgba(167,139,250,0.08)",
                   }
                 : {}),
-              width: 128,
+              width: 48,
               height: 48,
               borderRadius: 16,
-              gap: 8,
-              padding: "0 12px",
+              padding: 0,
+              cursor: "pointer",
             }}
           >
-            <Sun
-              size={15}
-              color={mode === "light" ? "#7C6FA6" : "#AAB6CC"}
-              strokeWidth={2.1}
-            />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={brightness}
-              aria-label="Brightness"
-              onChange={(event) => setBrightness(Number(event.target.value))}
-              className="min-w-0 flex-1 accent-[#8B5CF6]"
-            />
             <span
               style={{
-                width: 28,
-                textAlign: "right",
+                width: "100%",
+                height: "100%",
+                borderRadius: 999,
+                display: "grid",
+                placeItems: "center",
+                background: "transparent",
                 color:
                   mode === "light"
-                    ? "rgba(76,86,118,0.68)"
-                    : colors.textMuted,
-                fontSize: 11,
-                fontWeight: 850,
+                    ? "#7C3AED"
+                    : "#C4B5FD",
               }}
             >
-              {Math.round(brightness * 100)}%
+              {mode === "dark" ? (
+                <Moon size={20} strokeWidth={2.2} />
+              ) : (
+                <Sun size={20} strokeWidth={2.2} />
+              )}
             </span>
-          </motion.div>
+          </motion.button>
 
           <div className="relative">
             <motion.button
@@ -436,7 +428,7 @@ export default function Navbar() {
                         "linear-gradient(180deg, rgba(255,255,255,0.095), rgba(255,255,255,0.052))",
                       border: "1px solid rgba(255,255,255,0.13)",
                       boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18)",
+                        "inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(0,0,0,0.18), 0 0 18px rgba(167,139,250,0.08)",
                     }
                   : {}),
                 width: 48,
@@ -593,7 +585,7 @@ export default function Navbar() {
                       }}
                     />
                     <ProfileInfoRow label="Theme" value={mode === "dark" ? "Dark" : "Light"} />
-                    <ProfileInfoRow label="Brightness" value={`${Math.round(brightness * 100)}%`} />
+                    <ProfileInfoRow label="Accent" value="Deep Lavender" />
                     <ProfileInfoRow label="Default Color" value="Classic Paper" />
                     <ProfileInfoRow label="Font Size" value="16 px" />
                     <ProfileInfoRow label="Auto Save" value="On" />

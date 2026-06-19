@@ -18,6 +18,8 @@ type Props = {
   newNoteId?: string;
   viewMode: "list" | "grid";
   isTrashView?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 export default function NoteList({
@@ -34,6 +36,8 @@ export default function NoteList({
   newNoteId,
   viewMode,
   isTrashView,
+  emptyTitle = "No notes yet",
+  emptyDescription = "Start writing your ideas.",
 }: Props) {
   const safeNotes = Array.isArray(notes) ? notes : [];
 
@@ -140,7 +144,7 @@ export default function NoteList({
                 color: "#18254B",
               }}
             >
-              No notes yet
+              {emptyTitle}
             </h3>
             <p
               style={{
@@ -151,7 +155,7 @@ export default function NoteList({
                 color: "rgba(67,75,119,0.68)",
               }}
             >
-              Start writing your ideas.
+              {emptyDescription}
             </p>
           </div>
         </div>
@@ -161,14 +165,15 @@ export default function NoteList({
 
   return (
 <div
+  className="note-list-grid"
   style={{
     display: "grid",
     gridTemplateColumns:
       viewMode === "grid" ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr)",
 
-    gridAutoRows: viewMode === "grid" ? "166px" : "156px",
+    gridAutoRows: viewMode === "grid" ? "166px" : "clamp(136px, 16.5vh, 144px)",
 
-    gap: viewMode === "grid" ? 22 : 20,
+    gap: viewMode === "grid" ? 22 : 16,
 
     paddingTop: 8,
     paddingBottom: 44,
@@ -206,12 +211,13 @@ function NoteListSkeleton({ viewMode }: { viewMode: "list" | "grid" }) {
 
   return (
     <div
+      className="note-list-grid"
       style={{
         display: "grid",
         gridTemplateColumns:
           viewMode === "grid" ? "repeat(3, minmax(0, 1fr))" : "minmax(0, 1fr)",
-        gridAutoRows: viewMode === "grid" ? "166px" : "156px",
-        gap: viewMode === "grid" ? 22 : 20,
+        gridAutoRows: viewMode === "grid" ? "166px" : "clamp(136px, 16.5vh, 144px)",
+        gap: viewMode === "grid" ? 22 : 16,
         paddingTop: 8,
         paddingBottom: 44,
         paddingLeft: 2,

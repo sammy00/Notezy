@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Expand,
   FileText,
-  Highlighter,
   Image as ImageIcon,
   Italic,
   List,
@@ -40,15 +39,6 @@ type Props = {
   onFullscreen: () => void;
   ink: string;
 };
-
-const highlightOptions = [
-  { label: "Yellow", format: "highlight-yellow" as const, color: "#FFF1A8" },
-  { label: "Pink", format: "highlight-pink" as const, color: "#FFD6E0" },
-  { label: "Mint", format: "highlight-mint" as const, color: "#D9F3DC" },
-  { label: "Blue", format: "highlight-blue" as const, color: "#DDEBFF" },
-  { label: "Lavender", format: "highlight-lavender" as const, color: "#E9DDFF" },
-  { label: "Clear", format: "highlight-clear" as const, color: "#FFFFFF" },
-];
 
 const listOptions = [
   { label: "Bullets", format: "list-bullet" as const, icon: <List size={16} strokeWidth={2.05} /> },
@@ -118,58 +108,6 @@ export default function SideToolbar({
             onFormat("underline");
           }}
         />
-
-        <ToolbarGroup>
-          <SideToolbarButton
-            label="Highlight"
-            icon={<Highlighter size={18} strokeWidth={2.05} />}
-            trailing={<ChevronDown size={12} strokeWidth={2.3} />}
-            active={openMenu === "highlight"}
-            onClick={() =>
-              setOpenMenu((menu) => (menu === "highlight" ? null : "highlight"))
-            }
-          />
-          <AnimatePresence>
-            {openMenu === "highlight" && (
-              <ToolbarPopover width={184}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(6, 1fr)",
-                    gap: 8,
-                  }}
-                >
-                  {highlightOptions.map((option) => (
-                    <button
-                      key={option.format}
-                      type="button"
-                      aria-label={option.label}
-                      title={option.label}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        onFormat(option.format);
-                        closeMenu();
-                      }}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 8,
-                        border:
-                          option.format === "highlight-clear"
-                            ? "1px dashed rgba(70,66,104,0.34)"
-                            : "1px solid rgba(255,255,255,0.88)",
-                        background: option.color,
-                        cursor: "pointer",
-                        boxShadow:
-                          "inset 0 1px 0 rgba(255,255,255,0.78), 0 5px 10px rgba(58,46,92,0.10)",
-                      }}
-                    />
-                  ))}
-                </div>
-              </ToolbarPopover>
-            )}
-          </AnimatePresence>
-        </ToolbarGroup>
 
         <ToolbarGroup>
           <SideToolbarButton

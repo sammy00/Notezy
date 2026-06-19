@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 import { DragControls, motion } from "framer-motion";
 
@@ -49,9 +49,23 @@ export default function AppLayout({
 
   const layout = designSystem.components.appLayout;
 
+  useEffect(() => {
+    const syncResponsiveSidebar = () => {
+      if (window.innerWidth <= 1180) {
+        setCollapsed(true);
+      }
+    };
+
+    syncResponsiveSidebar();
+    window.addEventListener("resize", syncResponsiveSidebar);
+
+    return () => window.removeEventListener("resize", syncResponsiveSidebar);
+  }, []);
+
   return (
     <div
       className="
+        notezy-app-shell
         relative
         flex
         h-full
@@ -70,11 +84,9 @@ export default function AppLayout({
               radial-gradient(circle at 82% 4%, rgba(169,186,197,0.34), transparent 34%),
               radial-gradient(circle at 4% 94%, rgba(207,221,249,0.44), transparent 34%),
               linear-gradient(145deg, rgba(247,248,253,0.78), rgba(231,235,248,0.64) 52%, rgba(218,225,244,0.72))
-            `
+            ` 
             : `
-              radial-gradient(circle at 74% 18%, rgba(80,104,166,0.24), transparent 32%),
-              radial-gradient(circle at 16% 76%, rgba(42,74,128,0.18), transparent 34%),
-              linear-gradient(145deg, rgba(18,36,67,0.98), rgba(11,27,54,0.96) 48%, rgba(24,45,84,0.98))
+              #171B38
             `,
 
         boxShadow: maximized
@@ -151,7 +163,7 @@ export default function AppLayout({
               : `
                 radial-gradient(
                   circle at 10% 16%,
-                  rgba(66,103,166,0.18),
+                  rgba(167,139,250,0.13),
                   transparent 26%
                 ),
 
@@ -163,20 +175,20 @@ export default function AppLayout({
 
                 radial-gradient(
                   circle at 86% 76%,
-                  rgba(60,105,176,0.16),
+                  rgba(196,181,253,0.10),
                   transparent 32%
                 ),
 
                 radial-gradient(
                   ellipse at 48% 112%,
-                  rgba(66,105,174,0.18),
+                  rgba(139,92,246,0.12),
                   transparent 46%
                 ),
 
                 radial-gradient(
                   ellipse at 50% 48%,
                   transparent 38%,
-                  rgba(5,13,28,0.22) 100%
+                  rgba(8,6,28,0.24) 100%
                 )
               `,
         }}
@@ -186,6 +198,7 @@ export default function AppLayout({
 
       <div
         className="
+          notezy-app-inner
           relative
           z-10
           flex
@@ -212,6 +225,7 @@ export default function AppLayout({
             damping: 26,
           }}
           className="
+            notezy-sidebar-panel
             relative
             z-[80]
             h-full
@@ -241,6 +255,7 @@ export default function AppLayout({
 
         <section
           className="
+            notezy-content-panel
             relative
             flex
             min-w-0
@@ -259,27 +274,25 @@ export default function AppLayout({
                   radial-gradient(circle at 84% 0%, rgba(169,186,197,0.26), transparent 30%),
                   radial-gradient(circle at 12% 92%, rgba(210,224,250,0.34), transparent 32%),
                   linear-gradient(145deg, rgba(255,255,255,0.58), rgba(242,245,253,0.36))
-                `
+                ` 
                 : `
-                  radial-gradient(circle at 78% 8%, rgba(86,111,180,0.16), transparent 32%),
-                  radial-gradient(circle at 18% 88%, rgba(46,83,141,0.14), transparent 34%),
-                  linear-gradient(145deg, rgba(32,55,101,0.72), rgba(20,39,77,0.54))
+                  #1C2450
                 `,
             border:
               mode === "light"
                 ? "1px solid rgba(255,255,255,0.58)"
-                : "1px solid rgba(135,160,210,0.13)",
+                : "1px solid rgba(255,255,255,0.08)",
             boxShadow:
               mode === "light"
                 ? "inset 0 1px 0 rgba(255,255,255,0.82), 0 32px 90px rgba(92,100,145,0.16)"
-                : "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 80px rgba(0,0,0,0.26)",
+                : "inset 0 1px 0 rgba(255,255,255,0.08), 0 32px 80px rgba(8,6,28,0.32)",
             backdropFilter: glass.backdropFilter,
             WebkitBackdropFilter: glass.WebkitBackdropFilter,
           }}
         >
           {/* NAVBAR */}
 
-          <div className="px-8 pt-6">
+          <div className="notezy-navbar-wrap px-8 pt-6">
             <Navbar />
           </div>
 
@@ -287,6 +300,7 @@ export default function AppLayout({
 
           <main
             className="
+              notezy-main
               min-h-0
               flex-1
               overflow-hidden

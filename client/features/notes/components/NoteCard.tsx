@@ -3,12 +3,9 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { MoreHorizontal, Scissors, Star } from "lucide-react";
-import { Note } from "../types/note";
+import { getNoteCategoryLabel, Note } from "../types/note";
 import NoteActionsMenu from "./NoteActionsMenu";
 import { NOTE_THEME } from "@/shared/theme/notesThemes";
-
-const noteCardTornBottom =
-  "polygon(0 0, 100% 0, 100% calc(100% - 12px), 97% calc(100% - 10px), 93% calc(100% - 13px), 89% calc(100% - 10px), 84% calc(100% - 14px), 79% calc(100% - 10px), 74% calc(100% - 13px), 69% calc(100% - 10px), 64% calc(100% - 14px), 59% calc(100% - 10px), 54% calc(100% - 13px), 49% calc(100% - 10px), 44% calc(100% - 14px), 39% calc(100% - 10px), 34% calc(100% - 13px), 29% calc(100% - 10px), 24% calc(100% - 14px), 19% calc(100% - 10px), 14% calc(100% - 13px), 9% calc(100% - 10px), 4% calc(100% - 14px), 0 calc(100% - 12px))";
 
 const paperVariants = [
   { x: 0, y: 0, pinX: 0, pinY: 0, grainX: 0, grainY: 0 },
@@ -19,16 +16,16 @@ const paperVariants = [
 
 const cardSpring = {
   type: "spring",
-  stiffness: 125,
-  damping: 22,
-  mass: 0.9,
+  stiffness: 95,
+  damping: 24,
+  mass: 1,
 } as const;
 
 const cardLayoutSpring = {
   type: "spring",
-  stiffness: 170,
-  damping: 28,
-  mass: 0.85,
+  stiffness: 115,
+  damping: 30,
+  mass: 0.95,
 } as const;
 
 type Props = {
@@ -67,10 +64,11 @@ export default function NoteCard({
   const [isHovered, setIsHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const actionsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const categoryLabel = getNoteCategoryLabel(note.category);
   const cardTilt = isGrid
-    ? [-0.35, 0.26, -0.18, 0.32, -0.24, 0.2][index % 6]
-    : [-0.28, 0.22, -0.16, 0.18][index % 4];
-  const hoverTilt = cardTilt + (cardTilt >= 0 ? 0.42 : -0.42);
+    ? [-0.22, 0.18, -0.14, 0.2, -0.16, 0.14][index % 6]
+    : [-0.16, 0.14, -0.12, 0.12][index % 4];
+  const hoverTilt = cardTilt + (cardTilt >= 0 ? 0.16 : -0.16);
   const variant = paperVariants[index % paperVariants.length];
 
   return (
@@ -81,15 +79,15 @@ export default function NoteCard({
       onHoverEnd={() => setIsHovered(false)}
       initial={{
         opacity: 0,
-        y: isNew ? -38 : 6,
-        rotate: isNew ? cardTilt - 0.85 : cardTilt,
-        scale: isNew ? 0.96 : 0.998,
+        y: isNew ? -22 : 4,
+        rotate: isNew ? cardTilt - 0.35 : cardTilt,
+        scale: isNew ? 0.98 : 1,
       }}
       animate={{
         opacity: 1,
-        y: isActive ? -1 : 0,
+        y: 0,
         rotate: cardTilt,
-        scale: isActive ? 1.004 : 1,
+        scale: isActive ? 1.002 : 1,
       }}
       transition={{
         ...cardSpring,
@@ -97,15 +95,15 @@ export default function NoteCard({
         delay: isNew ? 0 : Math.min(index * 0.025, 0.12),
       }}
       whileHover={{
-        y: -6,
+        y: -3,
         rotate: hoverTilt,
-        scale: 1.01,
+        scale: 1.004,
         transition: cardSpring,
       }}
       whileTap={{
-        y: -2,
-        scale: 0.996,
-        transition: { type: "spring", stiffness: 420, damping: 28 },
+        y: -1,
+        scale: 0.998,
+        transition: { type: "spring", stiffness: 240, damping: 24 },
       }}
       style={{
         position: "relative",
@@ -125,7 +123,7 @@ export default function NoteCard({
           opacity: isActive ? 0.82 : isHovered ? 0.36 : 0,
           scale: isActive || isHovered ? 1 : 0.98,
         }}
-        transition={{ type: "spring", stiffness: 140, damping: 26 }}
+        transition={{ type: "spring", stiffness: 100, damping: 24 }}
         style={{
           position: "absolute",
           inset: isGrid ? "8px 10px -12px" : "8px 16px -14px 8px",
@@ -178,7 +176,7 @@ export default function NoteCard({
                   ? `0 24px 50px rgba(0,0,0,0.13), 0 32px 56px ${t.shadow}, 0 0 0 1px ${t.dot}28, inset 0 1px 0 rgba(255,255,255,0.90), inset 0 -1px 0 rgba(74,63,95,0.065)`
                   : `0 12px 32px rgba(0,0,0,0.08), 0 20px 34px ${t.shadow}, inset 0 1px 0 rgba(255,255,255,0.82), inset 0 -1px 0 rgba(74,63,95,0.055)`,
           }}
-          transition={{ type: "spring", stiffness: 130, damping: 24 }}
+          transition={{ type: "spring", stiffness: 95, damping: 25 }}
           style={{
             height: "100%",
             minWidth: 0,
@@ -190,11 +188,11 @@ export default function NoteCard({
             borderRadius: "18px 18px 8px 8px",
             backgroundColor: t.bg,
             border: isActive
-              ? `1px solid ${t.dot}B8`
+              ? "1px solid rgba(255,105,135,.35)"
               : "1px solid rgba(255,255,255,0.68)",
             transition:
               "background-color 240ms ease, border-color 220ms ease",
-            padding: isGrid ? "22px 24px 36px" : "26px 28px 40px",
+            padding: isGrid ? "22px 24px 36px" : "22px 28px 34px",
               backgroundImage: `
                 radial-gradient(circle at 18% 20%, rgba(255,255,255,0.32) 0 0.8px, transparent 1.1px),
                 radial-gradient(circle at 72% 42%, rgba(80,60,120,0.045) 0 0.9px, transparent 1.2px),
@@ -205,7 +203,6 @@ export default function NoteCard({
               `,
             backgroundSize: "74px 74px, 106px 106px, 58px 58px, 46px 46px, 100% 100%, 100% 100%",
             backgroundPosition: `${variant.grainX}px ${variant.grainY}px, ${variant.grainX + 18}px ${variant.grainY + 7}px, ${variant.grainX / 2}px ${variant.grainY}px, center, center`,
-            clipPath: noteCardTornBottom,
           }}
         >
           <div
@@ -233,22 +230,14 @@ export default function NoteCard({
             style={{
               position: "absolute",
               left: 0,
-              right: 0,
-              bottom: 5,
-              height: isGrid ? 22 : 20,
+              top: 0,
+              bottom: 0,
+              width: isGrid ? 5 : 6,
               zIndex: 2,
               pointerEvents: "none",
-              opacity: 0.18,
-              backgroundImage: `
-                linear-gradient(to bottom, transparent, rgba(57,50,92,0.10)),
-                linear-gradient(to top, rgba(255,255,255,0.26), transparent 40%),
-                radial-gradient(ellipse at 12% 100%, rgba(255,255,255,0.52) 0 7px, transparent 13px),
-                radial-gradient(ellipse at 31% 96%, rgba(57,50,92,0.09) 0 5px, transparent 11px),
-                radial-gradient(ellipse at 49% 102%, rgba(255,255,255,0.44) 0 8px, transparent 14px),
-                radial-gradient(ellipse at 72% 96%, rgba(57,50,92,0.08) 0 6px, transparent 12px),
-                radial-gradient(ellipse at 91% 102%, rgba(255,255,255,0.46) 0 7px, transparent 13px)
-              `,
-              backgroundRepeat: "no-repeat",
+              borderRadius: "18px 0 0 18px",
+              background: `linear-gradient(180deg, ${t.dot}, color-mix(in srgb, ${t.dot}, #ffffff 20%))`,
+              boxShadow: `0 0 18px ${t.dot}24`,
             }}
           />
 
@@ -367,7 +356,7 @@ export default function NoteCard({
           >
             <h3
               style={{
-                margin: "0 0 9px",
+                margin: isGrid ? "0 0 9px" : "0 0 6px",
                 fontFamily: "var(--font-ui)",
                 fontSize: isGrid ? 17 : 18,
                 fontWeight: 700,
@@ -385,13 +374,13 @@ export default function NoteCard({
               style={{
                 margin: 0,
                 fontFamily: "var(--font-ui)",
-                fontSize: isGrid ? 13 : 14,
+                fontSize: isGrid ? 13 : 13.5,
                 fontWeight: 400,
                 lineHeight: isGrid ? 1.48 : 1.45,
                 color: t.body,
                 opacity: 0.82,
                 whiteSpace: "pre-line",
-                maxHeight: isGrid ? 58 : 44,
+                maxHeight: isGrid ? 58 : 36,
                 overflow: "hidden",
                 textOverflow: "clip",
               }}
@@ -405,7 +394,7 @@ export default function NoteCard({
               position: "absolute",
               left: 28,
               right: isGrid ? 104 : 24,
-              bottom: isGrid ? 48 : 31,
+              bottom: isGrid ? 48 : 26,
               zIndex: 24,
               display: "flex",
               alignItems: "center",
@@ -413,23 +402,61 @@ export default function NoteCard({
               gap: 14,
             }}
           >
-            <p
+            <div
               style={{
-                margin: 0,
-                fontSize: 12,
-                fontWeight: 560,
-                lineHeight: 1.1,
-                letterSpacing: 0.08,
+                minWidth: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 color: "rgba(54,63,103,0.55)",
-                backgroundColor: "transparent",
-                borderRadius: 0,
-                padding: 0,
-                textShadow: "0 1px 0 rgba(255,255,255,0.46)",
-                whiteSpace: "nowrap",
               }}
             >
-              {note.date}
-            </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: isGrid ? 12 : 11.5,
+                  fontWeight: 560,
+                  lineHeight: 1.1,
+                  letterSpacing: 0.08,
+                  backgroundColor: "transparent",
+                  borderRadius: 0,
+                  padding: 0,
+                  textShadow: "0 1px 0 rgba(255,255,255,0.46)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {note.date}
+              </p>
+              <span
+                aria-label={`Category: ${categoryLabel}`}
+                style={{
+                  minWidth: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  fontSize: isGrid ? 11 : 10.5,
+                  fontWeight: 720,
+                  lineHeight: 1,
+                  color: t.dot,
+                  opacity: 0.78,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: t.dot,
+                    flexShrink: 0,
+                  }}
+                />
+                {categoryLabel}
+              </span>
+            </div>
 
             {!isGrid && (
               <FavoriteButton
@@ -446,7 +473,7 @@ export default function NoteCard({
               position: "absolute",
               left: 28,
               right: 74,
-              bottom: isGrid ? 16 : 12,
+              bottom: isGrid ? 16 : 9,
               zIndex: 5,
               display: "flex",
               alignItems: "center",

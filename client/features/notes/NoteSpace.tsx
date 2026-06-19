@@ -1,14 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
   SlidersHorizontal,
   Grid2X2,
   List as ListIcon,
+  Circle,
+  Lightbulb,
+  NotebookPen,
+  Sparkles,
 } from "lucide-react";
 import NoteList from "./components/NoteList";
 import NoteEditor from "./components/NoteEditor";
-import { Note } from "./types/note";
+import {
+  getNoteCategoryLabel,
+  Note,
+  NoteCategory,
+  normalizeNoteCategory,
+} from "./types/note";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import {
   createNote as createNoteApi,
@@ -24,12 +34,13 @@ const NEW_NOTE_EVENT = "notezy:create-note";
 const NOTE_FILTER_EVENT = "notezy:set-note-filter";
 const NOTE_SEARCH_EVENT = "notezy:set-note-search";
 const NOTE_CATEGORY_EVENT = "notezy:update-note-category";
+const NOTE_CATEGORY_COUNTS_EVENT = "notezy:update-category-counts";
 const NOTES_CACHE_KEY = "notezy-notes-cache";
 
 type SaveStatus = "idle" | "saving" | "saved" | "deleted";
 type NoteFilter = "all" | "favorites" | "pinned" | "trash" | "category";
 
-function createBlankNote(category = "Personal"): Note {
+function createBlankNote(category: NoteCategory = "personal"): Note {
   return {
     id: `note-${Date.now()}-${crypto.randomUUID()}`,
     title: "Untitled Note",
@@ -41,7 +52,7 @@ function createBlankNote(category = "Personal"): Note {
     pinned: false,
     archived: false,
     trashed: false,
-    category,
+    category: normalizeNoteCategory(category),
   };
 }
 
@@ -70,7 +81,12 @@ function readCachedNotes() {
     }
 
     const parsedNotes = JSON.parse(cachedNotes);
-    return Array.isArray(parsedNotes) ? (parsedNotes as Note[]) : [];
+    return Array.isArray(parsedNotes)
+      ? (parsedNotes as Note[]).map((note) => ({
+          ...note,
+          category: normalizeNoteCategory(note.category),
+        }))
+      : [];
   } catch {
     return [];
   }
@@ -84,6 +100,67 @@ function cacheNotes(notes: Note[]) {
   localStorage.setItem(getNotesCacheKey(), JSON.stringify(notes));
 }
 
+function WorkspaceEmptyState({
+  onCreateNote,
+  title = "Your ideas deserve",
+  titleAccent = "a home.",
+  description = "Capture notes, plans, opportunities, and reminders before they disappear.",
+}: {
+  onCreateNote: () => void;
+  title?: string;
+  titleAccent?: string;
+  description?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.985 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+      className="note-empty-surface"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+        borderRadius: 22,
+      }}
+    >
+      <div className="empty-panel">
+        <div className="brand-orbit">
+          <div className="empty-logo">N</div>
+          <Sparkles className="sparkle s1" />
+          <Sparkles className="sparkle s2" />
+          <Circle className="sparkle s3" />
+          <Sparkles className="sparkle s4" />
+        </div>
+
+        <h1>
+          {title} <span>{titleAccent}</span>
+        </h1>
+        <p>{description}</p>
+
+        <button type="button" onClick={onCreateNote}>
+          <span aria-hidden>+</span>
+          Create New Note
+        </button>
+
+        <div className="shortcut">
+          Press <kbd>Ctrl N</kbd> to create
+        </div>
+
+        <div className="footer-line" aria-hidden>
+          <Lightbulb />
+          <span />
+          <em>From idea to note.</em>
+          <span />
+          <NotebookPen />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function NoteWorkspace() {
   const { mode, colors } = useTheme();
 
@@ -93,7 +170,7 @@ export default function NoteWorkspace() {
   const [activeId, setActiveId] = useState<string>("");
   const [newNoteId, setNewNoteId] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<NoteFilter>("all");
-  const [activeCategory, setActiveCategory] = useState("");
+  const [activeCategory, setActiveCategory] = useState<NoteCategory | "">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const isCreatingNoteRef = useRef(false);
@@ -112,8 +189,7 @@ export default function NoteWorkspace() {
             ? notes.filter(
                 (note) =>
                   !note.trashed &&
-                  (note.category ?? "").toLowerCase() ===
-                  activeCategory.toLowerCase(),
+                  note.category === activeCategory,
               )
           : notes.filter((note) => !note.trashed);
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -147,14 +223,47 @@ export default function NoteWorkspace() {
           : activeFilter === "trash"
             ? "Trash"
           : activeFilter === "category"
-            ? activeCategory || "Category"
+            ? activeCategory
+              ? getNoteCategoryLabel(activeCategory)
+              : "Category"
           : "Notes";
   const notesSubtitle =
     searchQuery.trim()
       ? `${visibleNotes.length} result${visibleNotes.length === 1 ? "" : "s"} for "${searchQuery.trim()}"`
-      : "";
+      : `${visibleNotes.length} note${visibleNotes.length === 1 ? "" : "s"}`;
+  const isCategoryEmpty =
+    activeFilter === "category" && Boolean(activeCategory) && visibleNotes.length === 0;
+  const categoryEmptyTitle =
+    isCategoryEmpty && activeCategory
+      ? `No ${getNoteCategoryLabel(activeCategory).toLowerCase()} notes yet`
+      : undefined;
+  const categoryEmptyDescription =
+    isCategoryEmpty && activeCategory
+      ? activeCategory === "journal"
+        ? "Start documenting your thoughts."
+        : `Create your first ${getNoteCategoryLabel(activeCategory).toLowerCase()} note.`
+      : undefined;
   const selectedNote =
     visibleNotes.find((note) => note.id === activeId) ?? null;
+
+  useEffect(() => {
+    const counts: Record<NoteCategory, number> = {
+      personal: 0,
+      work: 0,
+      journal: 0,
+      ideas: 0,
+    };
+
+    notes.forEach((note) => {
+      if (!note.trashed) {
+        counts[note.category] += 1;
+      }
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(NOTE_CATEGORY_COUNTS_EVENT, { detail: { counts } }),
+    );
+  }, [notes]);
 
   const showSaveStatus = (status: SaveStatus) => {
     if (saveStatusTimeoutRef.current) {
@@ -179,7 +288,7 @@ export default function NoteWorkspace() {
     isCreatingNoteRef.current = true;
     showSaveStatus("saving");
     const blankNote = createBlankNote(
-      activeFilter === "category" && activeCategory ? activeCategory : "Personal",
+      activeFilter === "category" && activeCategory ? activeCategory : "personal",
     );
 
     setNotes((currentNotes) => {
@@ -299,7 +408,7 @@ export default function NoteWorkspace() {
 
       if (filter === "category" && detail?.category) {
         setActiveFilter("category");
-        setActiveCategory(detail.category);
+        setActiveCategory(normalizeNoteCategory(detail.category));
       }
     };
 
@@ -334,9 +443,8 @@ export default function NoteWorkspace() {
       if (detail?.action === "rename" && detail.oldCategory && detail.newCategory) {
         setNotes((currentNotes) => {
           const nextNotes = currentNotes.map((note) =>
-            (note.category ?? "").toLowerCase() ===
-            detail.oldCategory!.toLowerCase()
-              ? { ...note, category: detail.newCategory }
+            note.category === normalizeNoteCategory(detail.oldCategory)
+              ? { ...note, category: normalizeNoteCategory(detail.newCategory) }
               : note,
           );
           cacheNotes(nextNotes);
@@ -357,14 +465,15 @@ export default function NoteWorkspace() {
           return nextNotes;
         });
         setActiveFilter("category");
-        setActiveCategory(detail.newCategory);
+        setActiveCategory(normalizeNoteCategory(detail.newCategory));
       }
 
       if (detail?.action === "delete" && detail.category) {
         setNotes((currentNotes) => {
+          const fallbackCategory = normalizeNoteCategory("personal");
           const nextNotes = currentNotes.map((note) =>
-            (note.category ?? "").toLowerCase() === detail.category!.toLowerCase()
-              ? { ...note, category: "Personal" }
+            note.category === normalizeNoteCategory(detail.category)
+              ? { ...note, category: fallbackCategory }
               : note,
           );
           cacheNotes(nextNotes);
@@ -376,7 +485,7 @@ export default function NoteWorkspace() {
                 isPersistedNoteId(note.id),
             )
             .forEach((note) => {
-              void updateNoteApi(note.id, { category: "Personal" }).catch(
+              void updateNoteApi(note.id, { category: "personal" }).catch(
                 (error) =>
                   console.warn("Category delete could not be persisted.", error),
               );
@@ -568,6 +677,7 @@ export default function NoteWorkspace() {
 
   return (
     <div
+      className="note-workspace"
       style={{
         display: "grid",
         gridTemplateColumns:
@@ -580,6 +690,7 @@ export default function NoteWorkspace() {
       }}
     >
       <section
+        className="note-list-panel"
         style={{
           minWidth: 0,
           display: "flex",
@@ -606,8 +717,23 @@ export default function NoteWorkspace() {
               }}
             >
               {notesTitle}
+              {!searchQuery.trim() && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    color:
+                      mode === "light"
+                        ? "rgba(69,76,112,0.52)"
+                        : "rgba(238,242,255,0.54)",
+                    fontSize: 18,
+                    fontWeight: 820,
+                  }}
+                >
+                  ({visibleNotes.length})
+                </span>
+              )}
             </h1>
-            {notesSubtitle && (
+            {notesSubtitle && searchQuery.trim() && (
               <p
                 style={{
                   margin: "4px 0 0",
@@ -697,12 +823,15 @@ export default function NoteWorkspace() {
             isLoading={isLoadingNotes}
             newNoteId={newNoteId}
             viewMode={viewMode}
+            emptyTitle={categoryEmptyTitle}
+            emptyDescription={categoryEmptyDescription}
           />
         </div>
       </section>
 
     {viewMode === "list" && (
   <section
+    className="note-editor-workspace"
     style={{
       position: "relative",
       minWidth: 0,
@@ -728,23 +857,19 @@ export default function NoteWorkspace() {
             linear-gradient(145deg, rgba(255,255,255,0.32), rgba(221,228,246,0.18))
           `
           : `
-            radial-gradient(circle at 58% 34%, rgba(139,92,246,0.16), transparent 30%),
-            radial-gradient(circle at 34% 70%, rgba(34,211,238,0.08), transparent 34%),
-            radial-gradient(circle at 88% 86%, rgba(48,84,150,0.18), transparent 34%),
-            radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(5,13,28,0.18) 100%),
-            linear-gradient(145deg, rgba(83,109,168,0.35), rgba(30,57,104,0.56))
+            #1D2450
           `,
       border:
         mode === "light"
-          ? "1px solid rgba(255,255,255,0.72)"
-          : "1px solid rgba(255,255,255,0.12)",
+          ? "1px solid rgba(167,139,250,.15)"
+          : "1px solid rgba(167,139,250,.15)",
       backdropFilter: "blur(34px) saturate(175%)",
       WebkitBackdropFilter: "blur(34px) saturate(175%)",
 
       boxShadow:
         mode === "light"
           ? "inset 0 1px 0 rgba(255,255,255,0.80), inset 0 -1px 0 rgba(130,118,176,0.08), inset 14px 0 38px rgba(255,255,255,0.10), 0 16px 32px rgba(36,42,76,0.065), 0 3px 8px rgba(36,42,76,0.035)"
-          : "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(7,14,30,0.16), 0 36px 90px rgba(0,0,0,0.30)",
+          : "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(8,13,30,0.24), 0 30px 70px rgba(5,10,24,0.32)",
     }}
   >
     <div
@@ -761,8 +886,8 @@ export default function NoteWorkspace() {
               linear-gradient(115deg, rgba(255,255,255,0.18), transparent 28%),
               linear-gradient(292deg, rgba(255,255,255,0.10), transparent 34%)
             `
-            : "linear-gradient(115deg, rgba(255,255,255,0.08), transparent 30%)",
-        opacity: mode === "light" ? 0.40 : 0.42,
+            : "none",
+        opacity: mode === "light" ? 0.40 : 0,
       }}
     />
 
@@ -805,14 +930,17 @@ export default function NoteWorkspace() {
         bottom: "13%",
         zIndex: 0,
         pointerEvents: "none",
-        backgroundImage: `
-          radial-gradient(circle at 44% 28%, rgba(255,255,255,0.30), transparent 24%),
-          radial-gradient(circle at 40% 48%, rgba(169,186,197,0.16), transparent 42%),
-          radial-gradient(circle at 30% 74%, rgba(34,211,238,0.06), transparent 30%),
-          radial-gradient(ellipse at 42% 88%, rgba(12,20,48,0.12), transparent 58%)
-        `,
+        backgroundImage:
+          mode === "light"
+            ? `
+              radial-gradient(circle at 44% 28%, rgba(255,255,255,0.30), transparent 24%),
+              radial-gradient(circle at 40% 48%, rgba(167,139,250,0.12), transparent 42%),
+              radial-gradient(circle at 30% 74%, rgba(196,181,253,0.08), transparent 30%),
+              radial-gradient(ellipse at 42% 88%, rgba(12,20,48,0.12), transparent 58%)
+            `
+            : "none",
         filter: "blur(14px)",
-        opacity: mode === "light" ? 0.24 : 0.68,
+        opacity: mode === "light" ? 0.24 : 0,
       }}
     />
 
@@ -831,15 +959,40 @@ export default function NoteWorkspace() {
         boxSizing: "border-box",
       }}
     >
-      <NoteEditor
-        note={selectedNote}
-        recentNotes={visibleNotes.filter((note) => !note.trashed)}
-        onChange={(id, title, body) => updateNoteText(id, title, body)}
-        onUpdate={updateNote}
-        onDelete={deleteNote}
-        onCreateNote={() => void createAndSelectNote()}
-        saveStatus={saveStatus}
-      />
+      {selectedNote ? (
+        <NoteEditor
+          note={selectedNote}
+          onChange={(id, title, body) => updateNoteText(id, title, body)}
+          onUpdate={updateNote}
+          onDelete={deleteNote}
+          onCreateNote={() => void createAndSelectNote()}
+          saveStatus={saveStatus}
+        />
+      ) : (
+        <WorkspaceEmptyState
+          onCreateNote={() => void createAndSelectNote()}
+          title={
+            isCategoryEmpty && activeCategory
+              ? `No ${getNoteCategoryLabel(activeCategory).toLowerCase()}`
+              : activeFilter === "category" && activeCategory
+                ? `Select a ${getNoteCategoryLabel(activeCategory).toLowerCase()}`
+              : undefined
+          }
+          titleAccent={
+            isCategoryEmpty && activeCategory
+              ? "notes yet"
+              : activeFilter === "category" && activeCategory
+                ? "note"
+              : undefined
+          }
+          description={
+            categoryEmptyDescription ??
+            (activeFilter === "category" && activeCategory
+              ? `Choose a ${getNoteCategoryLabel(activeCategory).toLowerCase()} note from the list.`
+              : undefined)
+          }
+        />
+      )}
     </div>
 
   </section>

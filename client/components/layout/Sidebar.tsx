@@ -14,6 +14,7 @@ import {
   getStoredAuthToken,
   getStoredAuthUser,
 } from "@/features/auth/authClient";
+import { normalizeNoteCategory } from "@/features/notes/types/note";
 
 
 
@@ -29,7 +30,9 @@ type Props = {
 
 const NEW_NOTE_EVENT = "notezy:create-note";
 const NOTE_FILTER_EVENT = "notezy:set-note-filter";
+const NOTE_SEARCH_EVENT = "notezy:set-note-search";
 const NOTE_CATEGORY_EVENT = "notezy:update-note-category";
+const NOTE_CATEGORY_COUNTS_EVENT = "notezy:update-category-counts";
 const CUSTOM_CATEGORIES_KEY = "notezy-custom-categories";
 
 type SidebarItem = {
@@ -140,6 +143,7 @@ function SidebarButton({
   onClick,
   mode,
   iconAccent,
+  count,
 }: {
   item: SidebarItem;
   active: boolean;
@@ -147,6 +151,7 @@ function SidebarButton({
   onClick: () => void;
   mode: "light" | "dark";
   iconAccent?: string;
+  count?: number;
 }) {
   const Icon = item.icon;
   const [hovered, setHovered] = useState(false);
@@ -178,20 +183,23 @@ function SidebarButton({
           setAnchorRect(null);
         }}
         whileHover={{
-          x: collapsed ? 0 : 2,
-          backgroundColor: active ? undefined : "rgba(255,255,255,0.09)",
+          x: collapsed ? 0 : 1,
         }}
-        whileTap={{ scale: 0.985 }}
-        transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
-        className="relative flex h-[35px] w-full items-center rounded-[13px] transition-colors duration-200"
+        whileTap={{ scale: 0.992 }}
+        transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+        className="relative flex h-[35px] w-full items-center rounded-[13px]"
         style={{
           justifyContent: collapsed ? "center" : "flex-start",
           gap: collapsed ? 0 : 11,
           padding: collapsed ? 0 : "0 13px",
           background: active
             ? mode === "dark"
-              ? "linear-gradient(90deg, rgba(139,92,246,0.38), rgba(139,92,246,0.16) 58%, rgba(139,92,246,0.05))"
-              : "linear-gradient(90deg, rgba(238,232,255,0.86), rgba(238,232,255,0.48))"
+              ? iconAccent
+                ? `linear-gradient(90deg, ${iconAccent}42, ${iconAccent}1F 58%, ${iconAccent}0F)`
+                : "linear-gradient(90deg, rgba(139,92,246,0.38), rgba(139,92,246,0.16) 58%, rgba(139,92,246,0.05))"
+              : iconAccent
+                ? `linear-gradient(90deg, ${iconAccent}20, ${iconAccent}0F)`
+                : "linear-gradient(90deg, rgba(238,232,255,0.86), rgba(238,232,255,0.48))"
             : hovered
               ? mode === "dark"
                 ? "rgba(255,255,255,0.075)"
@@ -202,14 +210,16 @@ function SidebarButton({
               ? "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 24px rgba(139,92,246,0.16)"
               : "inset 0 1px 0 rgba(255,255,255,0.76), 0 4px 12px rgba(139,92,246,0.08)"
             : "none",
+          transition:
+            "background 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms ease",
         }}
       >
         {active && !collapsed && (
           <span
             className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full"
             style={{
-              background: "#8B5CF6",
-              boxShadow: "0 0 16px rgba(139,92,246,0.45)",
+              background: iconAccent ?? "#8B5CF6",
+              boxShadow: `0 0 16px ${iconAccent ?? "rgba(139,92,246,0.45)"}`,
             }}
           />
         )}
@@ -263,6 +273,42 @@ function SidebarButton({
             </motion.span>
           )}
         </AnimatePresence>
+        {!collapsed && typeof count === "number" && count > 0 && (
+          <span
+            style={{
+              marginLeft: "auto",
+              marginRight: 14,
+              minWidth: 24,
+              height: 24,
+              padding: count > 9 ? "0 7px" : 0,
+              borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color:
+                mode === "dark"
+                  ? "rgba(196,181,253,0.78)"
+                  : active
+                    ? `${iconAccent ?? "#7C3AED"}CC`
+                    : `${iconAccent ?? "#8B5CF6"}B8`,
+              background:
+                mode === "dark"
+                  ? "rgba(167,139,250,0.10)"
+                  : active
+                    ? `${iconAccent ?? "#8B5CF6"}12`
+                    : "rgba(139,92,246,0.055)",
+              boxShadow:
+                mode === "dark"
+                  ? "inset 0 1px 0 rgba(255,255,255,0.10)"
+                  : `inset 0 1px 0 rgba(255,255,255,0.74), 0 0 0 1px ${iconAccent ?? "#8B5CF6"}10`,
+              fontSize: 12,
+              fontWeight: active ? 900 : 820,
+              lineHeight: 1,
+            }}
+          >
+            {count}
+          </span>
+        )}
       </motion.button>
 
       {collapsed && (
@@ -380,12 +426,11 @@ function CustomCategoryRow({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={{
-        x: 2,
-        backgroundColor: active ? undefined : "rgba(255,255,255,0.09)",
+        x: 1,
       }}
-      whileTap={{ scale: 0.985 }}
-      transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
-      className="relative flex h-[35px] w-full items-center rounded-[13px] transition-colors duration-200"
+      whileTap={{ scale: 0.992 }}
+      transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+      className="relative flex h-[35px] w-full items-center rounded-[13px]"
       style={{
         gap: 11,
         padding: "0 11px 0 13px",
@@ -404,6 +449,8 @@ function CustomCategoryRow({
             ? "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 24px rgba(139,92,246,0.16)"
             : "inset 0 1px 0 rgba(255,255,255,0.76), 0 4px 12px rgba(139,92,246,0.08)"
           : "none",
+        transition:
+          "background 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
       {active && (
@@ -630,6 +677,16 @@ export default function Sidebar({
   const [customCategories, setCustomCategories] = useState<string[]>(() =>
     readCustomCategories(),
   );
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({
+    personal: 0,
+    work: 0,
+    journal: 0,
+    ideas: 0,
+  });
+  const allNotesCount = Object.values(categoryCounts).reduce(
+    (total, count) => total + count,
+    0,
+  );
   const [addingCategory, setAddingCategory] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [renamingCategory, setRenamingCategory] = useState("");
@@ -654,6 +711,26 @@ export default function Sidebar({
     window.addEventListener("notezy:auth-changed", syncAuthUser);
 
     return () => window.removeEventListener("notezy:auth-changed", syncAuthUser);
+  }, []);
+
+  useEffect(() => {
+    const syncCategoryCounts = (event: Event) => {
+      const counts = (event as CustomEvent<{
+        counts?: Record<string, number>;
+      }>).detail?.counts;
+
+      if (counts) {
+        setCategoryCounts(counts);
+      }
+    };
+
+    window.addEventListener(NOTE_CATEGORY_COUNTS_EVENT, syncCategoryCounts);
+
+    return () =>
+      window.removeEventListener(
+        NOTE_CATEGORY_COUNTS_EVENT,
+        syncCategoryCounts,
+      );
   }, []);
 
   const logout = () => {
@@ -704,8 +781,11 @@ export default function Sidebar({
   const selectCategory = (category: string) => {
     setActive(category);
     window.dispatchEvent(
+      new CustomEvent(NOTE_SEARCH_EVENT, { detail: { query: "" } }),
+    );
+    window.dispatchEvent(
       new CustomEvent(NOTE_FILTER_EVENT, {
-        detail: { filter: "category", category },
+        detail: { filter: "category", category: normalizeNoteCategory(category) },
       }),
     );
   };
@@ -831,11 +911,7 @@ export default function Sidebar({
     background:
       mode === "light"
         ? "linear-gradient(180deg, rgba(255,255,255,0.62), rgba(245,245,250,0.34))"
-        : `
-          radial-gradient(circle at 18% 0%, rgba(62,96,156,0.24), transparent 34%),
-          radial-gradient(circle at 88% 30%, rgba(100,86,180,0.14), transparent 34%),
-          linear-gradient(180deg, rgba(13,27,47,0.96), rgba(8,22,42,0.92))
-        `,
+        : "#0E1B35",
 
     border:
       mode === "light"
@@ -989,19 +1065,20 @@ export default function Sidebar({
             collapsed={collapsed}
             onClick={() => selectSidebarItem(item.label)}
             mode={mode}
+            count={item.label === "All Notes" ? allNotesCount : undefined}
           />
         ))}
       </div>
 
       {/* ── CATEGORIES ── */}
       <div
-        className="mt-1.5 min-h-0 flex-1 pr-1"
+        className="mt-1.5 shrink-0 pr-1"
         style={{
           display: "flex",
           flexDirection: "column",
         }}
       >
-      <div className="mt-2 flex min-h-0 flex-1 flex-col">
+      <div className="mt-2 flex min-h-0 flex-col">
         <AnimatePresence initial={false}>
           {!collapsed && (
             <motion.p
@@ -1016,8 +1093,8 @@ export default function Sidebar({
           )}
         </AnimatePresence>
         <div
-          className="min-h-0 flex-1 space-y-0.5 overflow-y-auto"
-          style={{ scrollbarWidth: "none" }}
+          className="min-h-0 space-y-0.5 overflow-y-auto"
+          style={{ maxHeight: 210, scrollbarWidth: "none" }}
         >
           {CATEGORY_ITEMS.map((item) => (
             <SidebarButton
@@ -1028,6 +1105,7 @@ export default function Sidebar({
               onClick={() => selectCategory(item.label)}
               mode={mode}
               iconAccent={CATEGORY_ACCENTS[item.label]}
+              count={categoryCounts[normalizeNoteCategory(item.label)] ?? 0}
             />
           ))}
           {customCategories.map((category) => (
@@ -1147,8 +1225,10 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── SPACER ── */}
       </div>
+
+      {/* ── SPACER ── */}
+      <div className="min-h-0 flex-1" />
 
       <div className="shrink-0 pt-0">
 

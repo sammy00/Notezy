@@ -65,8 +65,7 @@ export const designSystem = {
 
     dark: {
       primary: {
-        background:
-          "linear-gradient(180deg, rgba(30,41,59,0.78), rgba(15,23,42,0.68))",
+        background: "rgba(28,36,80,0.82)",
         border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: `
           inset 0 1px 0 rgba(255,255,255,0.04),
@@ -77,9 +76,8 @@ export const designSystem = {
       },
 
       secondary: {
-        background:
-          "linear-gradient(180deg, rgba(30,41,59,0.62), rgba(15,23,42,0.52))",
-        border: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(32,41,90,0.72)",
+        border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: `
           inset 0 1px 0 rgba(255,255,255,0.03),
           0 8px 28px rgba(0,0,0,0.35)

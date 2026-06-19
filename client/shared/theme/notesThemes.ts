@@ -140,7 +140,7 @@ export const NOTE_THEME = {
   },
 } as const;
 
-const EDITOR_PAPER = "#F6F1E8";
+const EDITOR_PAPER = "#F7F3EB";
 const EDITOR_TITLE = "#0F172A";
 const EDITOR_PEEK_LEFT = "#DCE8D1";
 const EDITOR_PEEK_RIGHT = "#F2D3D4";

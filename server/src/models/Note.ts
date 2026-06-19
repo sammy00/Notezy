@@ -19,13 +19,15 @@ export const NOTE_TONES = [
 ] as const;
 
 export type NoteTone = (typeof NOTE_TONES)[number];
+export const NOTE_CATEGORIES = ["personal", "work", "journal", "ideas"] as const;
+export type NoteCategory = (typeof NOTE_CATEGORIES)[number];
 
 export interface INote extends Document {
   title: string;
   content: string;
   preview: string;
   tone: NoteTone;
-  category: string;
+  category: NoteCategory;
   starred: boolean;
   pinned: boolean;
   archived: boolean;
@@ -41,7 +43,12 @@ const NoteSchema = new Schema<INote>(
     content: { type: String, default: "" },
     preview: { type: String, default: "" },
     tone: { type: String, enum: NOTE_TONES, default: "paper" },
-    category: { type: String, default: "Personal", trim: true },
+    category: {
+      type: String,
+      enum: NOTE_CATEGORIES,
+      default: "personal",
+      trim: true,
+    },
     starred: { type: Boolean, default: false },
     pinned: { type: Boolean, default: false },
     archived: { type: Boolean, default: false },

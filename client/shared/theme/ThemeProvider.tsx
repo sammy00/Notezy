@@ -71,19 +71,34 @@ export function ThemeProvider({
   children: React.ReactNode;
 }) {
   const [mode, setMode] =
-    useState<ThemeMode>(() => {
-      if (
-        typeof window === "undefined"
-      ) {
-        return "light";
+    useState<ThemeMode>("light");
+
+  const [isThemeReady, setIsThemeReady] =
+    useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedTheme = localStorage.getItem(
+        "notezy-theme"
+      );
+
+      if (storedTheme === "dark") {
+        setMode("dark");
       }
 
-      return "light";
-    });
+      setIsThemeReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   /* APPLY THEME */
 
   useEffect(() => {
+    if (!isThemeReady) {
+      return;
+    }
+
     localStorage.setItem(
       "notezy-theme",
       mode
@@ -97,7 +112,7 @@ export function ThemeProvider({
     document.documentElement.classList.add(
       mode
     );
-  }, [mode]);
+  }, [isThemeReady, mode]);
 
   /* ACTIVE THEME */
 
@@ -129,7 +144,7 @@ export function ThemeProvider({
         input:
           mode === "light"
             ? "rgba(255,255,255,0.72)"
-            : "rgba(255,255,255,0.08)",
+            : "#262E63",
 
         border:
           theme.colors.border,
@@ -151,12 +166,12 @@ export function ThemeProvider({
 
         noteBg:
           mode === "light"
-            ? "rgba(255,255,255,0.42)"
-            : "rgba(255,255,255,0.05)",
+            ? "rgba(255,255,255,0.86)"
+            : "#20295A",
 
         noteBorder:
           mode === "light"
-            ? "rgba(255,255,255,0.40)"
+            ? "rgba(255,255,255,0.72)"
             : "rgba(255,255,255,0.08)",
       }),
       [mode, theme]

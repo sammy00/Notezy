@@ -6,25 +6,25 @@ export const lightTheme = {
   name: "light",
 
   colors: {
-    appBg: "#F5F1EC",
+    appBg: "#F7F8FC",
 
-    sidebar: "rgba(255,255,255,0.58)",
+    sidebar: "rgba(255,255,255,0.84)",
 
-    navbar: "rgba(255,255,255,0.52)",
+    navbar: "rgba(255,255,255,0.78)",
 
-    editor: "#FBF8F4",
+    editor: "#FFFFFF",
 
-    glass: "rgba(255,255,255,0.55)",
+    glass: "rgba(255,255,255,0.72)",
 
     border: "rgba(0,0,0,0.06)",
 
-    text: "#1F2A44",
+    text: "#111827",
 
-    muted: "#7E8AA0",
+    muted: "#68708A",
 
-    accent: "#A78BFA",
+    accent: "#8B5CF6",
 
-    shadow: "rgba(0,0,0,0.10)",
+    shadow: "rgba(73,80,120,0.12)",
 
     glow: "rgba(167,139,250,0.20)",
   },
@@ -34,26 +34,26 @@ export const darkTheme = {
   name: "dark",
 
   colors: {
-    appBg: "#0F172A",
+    appBg: "#171B38",
 
-    sidebar: "rgba(15,23,42,0.72)",
+    sidebar: "#0E1B35",
 
-    navbar: "rgba(15,23,42,0.62)",
+    navbar: "#1C2450",
 
-    editor: "#111827",
+    editor: "#20295A",
 
-    glass: "rgba(255,255,255,0.05)",
+    glass: "rgba(28,36,80,0.76)",
 
     border: "rgba(255,255,255,0.08)",
 
-    text: "#F8FAFC",
+    text: "#E8EAF8",
 
-    muted: "#94A3B8",
+    muted: "#AAB6CC",
 
-    accent: "#C4B5FD",
+    accent: "#A78BFA",
 
-    shadow: "rgba(0,0,0,0.45)",
+    shadow: "rgba(5,10,24,0.52)",
 
-    glow: "rgba(196,181,253,0.25)",
+    glow: "rgba(167,139,250,0.18)",
   },
 };
