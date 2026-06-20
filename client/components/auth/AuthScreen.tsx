@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useState } from "react";
 import {
   loginAsDemo,
@@ -92,11 +93,12 @@ export default function AuthScreen({ mode }: Props) {
         }}
       >
         <div style={{ display: "grid", justifyItems: "center", gap: 12 }}>
-          <img
+          <Image
             src={NOTEZY_ICON}
             alt=""
             width={72}
             height={72}
+            priority
             style={{
               width: 72,
               height: 72,
@@ -115,7 +117,7 @@ export default function AuthScreen({ mode }: Props) {
                 letterSpacing: 0,
               }}
             >
-              {isSignup ? "Create Notezy" : "Welcome Back"}
+              {isSignup ? "Create Notezy" : "Welcome"}
             </h1>
             <p
               style={{
@@ -162,6 +164,22 @@ export default function AuthScreen({ mode }: Props) {
             placeholder="Minimum 5 characters"
             autoComplete={isSignup ? "new-password" : "current-password"}
           />
+
+          {!isSignup && (
+            <Link
+              href="/forgot-password"
+              style={{
+                justifySelf: "end",
+                marginTop: -4,
+                color: "#6D4DE2",
+                fontSize: 11.5,
+                fontWeight: 800,
+                textDecoration: "none",
+              }}
+            >
+              Forgot password?
+            </Link>
+          )}
 
           {error && (
             <p

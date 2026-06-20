@@ -6,6 +6,8 @@ import {
   getUserByIdService,
   loginDemoUserService,
   loginUserService,
+  requestPasswordResetService,
+  resetPasswordService,
 } from "../services/auth.service";
 
 const toUserResponse = (user: any) => ({
@@ -22,7 +24,12 @@ const sendAuthError = (res: Response, error: unknown) => {
   const status =
     message.includes("credentials") || message.includes("authenticate")
       ? 401
-      : message.includes("required") || message.includes("already exists")
+      : message.includes("configured")
+        ? 503
+      : message.includes("required") ||
+          message.includes("already exists") ||
+          message.includes("expired") ||
+          message.includes("Password")
         ? 400
         : 500;
 
@@ -79,6 +86,44 @@ export const demoLogin = async (_req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error opening demo workspace:", error);
+    sendAuthError(res, error);
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    await requestPasswordResetService(req.body);
+    res.status(200).json({
+      success: true,
+      message: "If an account exists, a password reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Error requesting password reset:", error);
+    sendAuthError(res, error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ success: false, errors: errors.array() });
+      return;
+    }
+
+    await resetPasswordService(req.body);
+    res.status(200).json({
+      success: true,
+      message: "Your password has been reset successfully.",
+    });
+  } catch (error) {
+    console.error("Error resetting password:", error);
     sendAuthError(res, error);
   }
 };

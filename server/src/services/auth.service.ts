@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { createHash, randomBytes } from "crypto";
 import { User } from "../models/User";
 import { Note } from "../models/Note";
 
@@ -36,6 +37,12 @@ type AuthPayload = {
   password?: unknown;
 };
 
+type ResetPayload = {
+  email?: unknown;
+  token?: unknown;
+  password?: unknown;
+};
+
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
 
@@ -48,6 +55,19 @@ const getJwtSecret = () => {
 
 const toCleanString = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
+
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[character] ?? character,
+  );
 
 const signToken = (userId: string) =>
   jwt.sign({ user: { id: userId } }, getJwtSecret(), { expiresIn: "7d" });
@@ -129,6 +149,99 @@ export const loginDemoUserService = async () => {
     authToken: signToken(user._id.toString()),
     user,
   };
+};
+
+const getResetEmailConfig = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  const clientUrl = process.env.CLIENT_URL?.split(",")[0]?.trim();
+
+  if (!apiKey || !from || !clientUrl) {
+    throw new Error("Password reset email is not configured");
+  }
+
+  return { apiKey, from, clientUrl };
+};
+
+const sendPasswordResetEmail = async (
+  email: string,
+  name: string,
+  token: string,
+) => {
+  const { apiKey, from, clientUrl } = getResetEmailConfig();
+  const resetUrl = `${clientUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: "Reset your Notezy password",
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:32px;color:#18254b">
+          <h1 style="font-size:24px">Reset your Notezy password</h1>
+          <p>Hi ${escapeHtml(name || "there")},</p>
+          <p>Use the button below to choose a new password. This link expires in 15 minutes.</p>
+          <a href="${resetUrl}" style="display:inline-block;margin:16px 0;padding:13px 20px;border-radius:12px;background:#6d4de2;color:white;text-decoration:none;font-weight:700">Reset password</a>
+          <p style="font-size:12px;color:#68708a">If you did not request this, you can safely ignore this email.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to send password reset email");
+  }
+};
+
+export const requestPasswordResetService = async (data: ResetPayload) => {
+  const email = toCleanString(data.email).toLowerCase();
+  if (!email) throw new Error("Email is required");
+
+  // Validate configuration before looking up a user so failures do not reveal
+  // whether a particular email address has an account.
+  getResetEmailConfig();
+  const user = await User.findOne({ email });
+  if (!user || user.role === "demo") return;
+
+  const token = randomBytes(32).toString("hex");
+  user.resetPasswordToken = createHash("sha256").update(token).digest("hex");
+  user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+  await user.save();
+
+  try {
+    await sendPasswordResetEmail(user.email, user.name, token);
+  } catch (error) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+    throw error;
+  }
+};
+
+export const resetPasswordService = async (data: ResetPayload) => {
+  const token = toCleanString(data.token);
+  const password = toCleanString(data.password);
+  if (!token || !password) throw new Error("Token and password are required");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters");
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({
+    resetPasswordToken: tokenHash,
+    resetPasswordExpires: { $gt: new Date() },
+  }).select("+resetPasswordToken +resetPasswordExpires");
+
+  if (!user || user.role === "demo") {
+    throw new Error("This password reset link is invalid or has expired");
+  }
+
+  user.password = await bcrypt.hash(password, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
 };
 
 export const getUserByIdService = async (id: string) => {

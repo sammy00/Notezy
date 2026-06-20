@@ -9,25 +9,37 @@
 
 Notezy combines a tactile sticky-note interface with practical productivity features: rich-text editing, autosave, categories, search, themes, keyboard shortcuts, responsive layouts, and installable PWA support.
 
+[**Live Demo**](https://notezy-app.vercel.app/) · [**Try Demo Account**](https://notezy-app.vercel.app/login) · [**Source Code**](https://github.com/sammy00/Notezy)
+
 ## Live Demo
 
-**Live frontend:** Deployment URL pending.
-
-The repository currently contains Railway configuration for the API, but no public frontend deployment URL is recorded. Add the production frontend URL here after deployment.
+**Live frontend:** [https://notezy-app.vercel.app/](https://notezy-app.vercel.app/)
 
 ### Demo Access
 
-Open the login screen and select **🚀 Try Demo Account**. No signup or credentials are required.
+Open the [Notezy login screen](https://notezy-app.vercel.app/login) and select **🚀 Try Demo Account**. No signup or credentials are required.
 
 The demo endpoint creates the shared demo account when needed and restores three curated sample notes whenever a new demo session begins.
 
-## Screenshot
+## Screenshots
 
-![Notezy dashboard](docs/screenshots/notezy-dashboard.png)
+### Demo Workspace
+
+![Notezy demo workspace with sample notes](docs/screenshots/notezy-demo-workspace.png)
+
+### Rich Note Editor
+
+![Notezy rich note editor](docs/screenshots/notezy-editor.png)
+
+### One-Click Demo Login
+
+![Notezy login page with demo account access](docs/screenshots/notezy-demo-login.png)
 
 ## Features
 
 - Secure email/password authentication with JWT sessions
+- Email-based password recovery with hashed, single-use reset tokens
+- Resend-powered reset emails with 15-minute link expiration
 - One-click demo workspace with seeded sample content
 - User-specific notes backed by MongoDB
 - Rich-text note editor with formatting tools
@@ -142,9 +154,27 @@ MONGO_URI=mongodb://127.0.0.1:27017/notezy
 JWT_SECRET=replace-with-a-long-random-secret
 CLIENT_URL=http://localhost:3000
 PORT=5050
+RESEND_API_KEY=re_your_api_key
+EMAIL_FROM=Notezy <noreply@your-verified-domain.com>
 ```
 
 Never commit real environment variables or production secrets.
+
+### Password Reset Email Setup
+
+Notezy uses [Resend](https://resend.com/) to deliver password-reset emails.
+
+1. Create a Resend account and verify a sending domain.
+2. Create an API key.
+3. Set `RESEND_API_KEY` and `EMAIL_FROM` on the deployed API.
+4. Set `CLIENT_URL` to the frontend URL so email links return users to Notezy:
+
+```env
+CLIENT_URL=https://notezy-app.vercel.app
+EMAIL_FROM=Notezy <noreply@your-verified-domain.com>
+```
+
+Reset tokens are hashed before database storage, expire after 15 minutes, and are deleted after a successful password change.
 
 ### 5. Start Notezy
 
@@ -172,6 +202,8 @@ npm run dev
 POST   /api/auth/signup
 POST   /api/auth/login
 POST   /api/auth/demo
+POST   /api/auth/forgot-password
+POST   /api/auth/reset-password
 GET    /api/auth/me
 
 GET    /api/notes
@@ -189,6 +221,7 @@ Protected note routes accept the JWT in the `auth-token` header or as a Bearer t
 - Deploy `server` using the included Railway configuration or another Node.js host.
 - Set `NEXT_PUBLIC_API_URL` to the deployed API URL.
 - Set `CLIENT_URL` to the deployed frontend origin.
+- Add `RESEND_API_KEY` and a verified `EMAIL_FROM` address to the API environment.
 - PWA installation requires HTTPS in production.
 
 ## Author
