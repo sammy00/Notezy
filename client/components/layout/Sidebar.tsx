@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ChevronsLeft, ChevronsRight, FileText, Star,Pin, CheckSquare, Bell, Calendar, User, Briefcase, BookOpen, Map, Trash2, Plus, Sun, LucideIcon, Pencil,
+  PanelLeftClose, PanelLeftOpen, FileText, Star,Pin, CheckSquare, Bell, Calendar, User, Briefcase, BookOpen, Map, Trash2, Plus, Sun, LucideIcon, Pencil, X, Settings,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -15,6 +15,7 @@ import {
   getStoredAuthUser,
 } from "@/features/auth/authClient";
 import { normalizeNoteCategory } from "@/features/notes/types/note";
+import { showToast } from "@/shared/toast";
 
 
 
@@ -26,6 +27,8 @@ type Props = {
   onClose: () => void;
   maximized: boolean;
   dragControls: DragControls;
+  mobileDrawer?: boolean;
+  onNavigate?: () => void;
 };
 
 const NEW_NOTE_EVENT = "notezy:create-note";
@@ -664,6 +667,8 @@ export default function Sidebar({
   onClose,
   maximized,
   dragControls,
+  mobileDrawer = false,
+  onNavigate,
 }: Props) {
 
   const { mode } = useTheme();
@@ -683,10 +688,12 @@ export default function Sidebar({
     journal: 0,
     ideas: 0,
   });
-  const allNotesCount = Object.values(categoryCounts).reduce(
-    (total, count) => total + count,
-    0,
-  );
+  const [mainCounts, setMainCounts] = useState<Record<string, number>>({
+    all: 0,
+    favorites: 0,
+    pinned: 0,
+    tasks: 0,
+  });
   const [addingCategory, setAddingCategory] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [renamingCategory, setRenamingCategory] = useState("");
@@ -717,10 +724,15 @@ export default function Sidebar({
     const syncCategoryCounts = (event: Event) => {
       const counts = (event as CustomEvent<{
         counts?: Record<string, number>;
-      }>).detail?.counts;
+        mainCounts?: Record<string, number>;
+      }>).detail;
 
-      if (counts) {
-        setCategoryCounts(counts);
+      if (counts?.counts) {
+        setCategoryCounts(counts.counts);
+      }
+
+      if (counts?.mainCounts) {
+        setMainCounts(counts.mainCounts);
       }
     };
 
@@ -758,6 +770,7 @@ export default function Sidebar({
       new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter: "all" } }),
     );
     setActive("All Notes");
+    onNavigate?.();
   };
 
   const selectSidebarItem = (label: string) => {
@@ -767,6 +780,7 @@ export default function Sidebar({
       "All Notes": "all",
       Favorites: "favorites",
       Pinned: "pinned",
+      Tasks: "tasks",
     };
 
     const filter = filterByLabel[label];
@@ -775,6 +789,7 @@ export default function Sidebar({
       window.dispatchEvent(
         new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter } }),
       );
+      onNavigate?.();
     }
   };
 
@@ -783,11 +798,23 @@ export default function Sidebar({
     window.dispatchEvent(
       new CustomEvent(NOTE_SEARCH_EVENT, { detail: { query: "" } }),
     );
+    onNavigate?.();
     window.dispatchEvent(
       new CustomEvent(NOTE_FILTER_EVENT, {
         detail: { filter: "category", category: normalizeNoteCategory(category) },
       }),
     );
+  };
+
+  const openWorkspaceDialog = (
+    dialog: "settings" | "notifications",
+  ) => {
+    window.dispatchEvent(
+      new CustomEvent("notezy:open-workspace-dialog", {
+        detail: { dialog },
+      }),
+    );
+    onNavigate?.();
   };
 
   const addCategory = () => {
@@ -816,6 +843,7 @@ export default function Sidebar({
     const nextCategories = [...customCategories, nextCategory];
     setCustomCategories(nextCategories);
     saveCustomCategories(nextCategories);
+    showToast("Category Created");
     setCategoryName("");
     setAddingCategory(false);
     selectCategory(nextCategory);
@@ -945,13 +973,15 @@ export default function Sidebar({
             paddingLeft: collapsed ? 0 : 2,
           }}
         >
-          <WindowBar
-            onMinimize={onMinimize}
-            onMaximize={onMaximize}
-            onClose={onClose}
-            maximized={maximized}
-            dragControls={dragControls}
-          />
+          {!mobileDrawer && (
+            <WindowBar
+              onMinimize={onMinimize}
+              onMaximize={onMaximize}
+              onClose={onClose}
+              maximized={maximized}
+              dragControls={dragControls}
+            />
+          )}
         </div>
 
         <div
@@ -979,9 +1009,29 @@ export default function Sidebar({
             )}
           </AnimatePresence>
 
-          <button
-            onClick={() => setCollapsed(!collapsed)}
+          <motion.button
+            type="button"
+            onClick={() =>
+              mobileDrawer ? onNavigate?.() : setCollapsed(!collapsed)
+            }
+            aria-label={
+              mobileDrawer
+                ? "Close navigation"
+                : collapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
+            }
+            title={
+              mobileDrawer
+                ? "Close navigation"
+                : collapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
+            }
             className="flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-[11px]"
+            whileHover={{ y: -1, scale: 1.035 }}
+            whileTap={{ scale: 0.93 }}
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
             style={{
               background:
                 mode === "dark"
@@ -997,25 +1047,37 @@ export default function Sidebar({
                   : "inset 0 1px 0 rgba(255,255,255,0.95), 0 3px 10px rgba(92,83,140,0.08)",
             }}
           >
-            <motion.div
-              animate={{ rotate: collapsed ? 180 : 0 }}
-              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
-            >
-              {collapsed ? (
-                <ChevronsRight
-                  size={15}
-                  strokeWidth={2.6}
-                  style={{ color: mode === "dark" ? "#F1ECFF" : "#5b6786" }}
-                />
-              ) : (
-                <ChevronsLeft
-                  size={15}
-                  strokeWidth={2.6}
-                  style={{ color: mode === "dark" ? "#F1ECFF" : "#5b6786" }}
-                />
-              )}
-            </motion.div>
-          </button>
+            <AnimatePresence initial={false} mode="wait">
+              <motion.div
+                key={mobileDrawer ? "close" : collapsed ? "open" : "collapse"}
+                initial={{ opacity: 0, scale: 0.78, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.82, rotate: 8 }}
+                transition={{ duration: 0.16, ease: [0.22, 0.61, 0.36, 1] }}
+                style={{ display: "grid", placeItems: "center" }}
+              >
+                {mobileDrawer ? (
+                  <X
+                    size={16}
+                    strokeWidth={2.6}
+                    style={{ color: mode === "dark" ? "#F1ECFF" : "#5b6786" }}
+                  />
+                ) : collapsed ? (
+                  <PanelLeftOpen
+                    size={15}
+                    strokeWidth={2.6}
+                    style={{ color: mode === "dark" ? "#F1ECFF" : "#5b6786" }}
+                  />
+                ) : (
+                  <PanelLeftClose
+                    size={15}
+                    strokeWidth={2.6}
+                    style={{ color: mode === "dark" ? "#F1ECFF" : "#5b6786" }}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.button>
         </div>
       </div>
 
@@ -1065,7 +1127,14 @@ export default function Sidebar({
             collapsed={collapsed}
             onClick={() => selectSidebarItem(item.label)}
             mode={mode}
-            count={item.label === "All Notes" ? allNotesCount : undefined}
+            count={
+              {
+                "All Notes": mainCounts.all,
+                Favorites: mainCounts.favorites,
+                Pinned: mainCounts.pinned,
+                Tasks: mainCounts.tasks,
+              }[item.label]
+            }
           />
         ))}
       </div>
@@ -1224,6 +1293,25 @@ export default function Sidebar({
           </div>
         )}
       </div>
+
+      {mobileDrawer && (
+        <div className="shrink-0 space-y-0.5 border-t border-white/40 py-2">
+          <SidebarButton
+            item={{ label: "Settings", icon: Settings }}
+            active={false}
+            collapsed={false}
+            onClick={() => openWorkspaceDialog("settings")}
+            mode={mode}
+          />
+          <SidebarButton
+            item={{ label: "Notifications", icon: Bell }}
+            active={false}
+            collapsed={false}
+            onClick={() => openWorkspaceDialog("notifications")}
+            mode={mode}
+          />
+        </div>
+      )}
 
       </div>
 
@@ -1414,12 +1502,37 @@ export default function Sidebar({
                     }}
                   />
                   <ProfileMenuButton
-                    label="Profile"
-                    onClick={() => setProfileMenuView("profile")}
+                    label="View Profile"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent("notezy:open-workspace-dialog", {
+                          detail: { dialog: "profile" },
+                        }),
+                      );
+                    }}
                   />
                   <ProfileMenuButton
-                    label="Settings"
-                    onClick={() => setProfileMenuView("settings")}
+                    label="Usage Statistics"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent("notezy:open-workspace-dialog", {
+                          detail: { dialog: "usage" },
+                        }),
+                      );
+                    }}
+                  />
+                  <ProfileMenuButton
+                    label="Keyboard Shortcuts"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent("notezy:open-workspace-dialog", {
+                          detail: { dialog: "shortcuts" },
+                        }),
+                      );
+                    }}
                   />
                   <ProfileMenuButton
                     danger

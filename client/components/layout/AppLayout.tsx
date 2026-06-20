@@ -6,6 +6,8 @@ import { DragControls, motion } from "framer-motion";
 
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
+import ToastViewport from "@/components/ui/ToastViewport";
+import MobileNavigation from "@/components/layout/MobileNavigation";
 
 import { useTheme } from "@/shared/theme/ThemeProvider";
 
@@ -34,6 +36,8 @@ export default function AppLayout({
   dragControls,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const { mode } = useTheme();
 
@@ -51,9 +55,16 @@ export default function AppLayout({
 
   useEffect(() => {
     const syncResponsiveSidebar = () => {
-      if (window.innerWidth <= 1180) {
+      const mobile = window.innerWidth <= 640;
+      setIsMobile(mobile);
+
+      if (mobile) {
+        setCollapsed(false);
+      } else if (window.innerWidth <= 1180) {
         setCollapsed(true);
       }
+
+      if (!mobile) setMobileDrawerOpen(false);
     };
 
     syncResponsiveSidebar();
@@ -106,6 +117,15 @@ export default function AppLayout({
         WebkitBackdropFilter: "blur(40px) saturate(180%)",
       }}
     >
+      <ToastViewport />
+      {isMobile && mobileDrawerOpen && (
+        <button
+          type="button"
+          className="notezy-mobile-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setMobileDrawerOpen(false)}
+        />
+      )}
       {/* AMBIENT ATMOSPHERE */}
 
       <div
@@ -220,9 +240,8 @@ export default function AppLayout({
               : layout.sidebarWidth.expanded,
           }}
           transition={{
-            type: "spring",
-            stiffness: 220,
-            damping: 26,
+            duration: 0.36,
+            ease: [0.22, 0.61, 0.36, 1],
           }}
           className="
             notezy-sidebar-panel
@@ -232,6 +251,7 @@ export default function AppLayout({
             shrink-0
             overflow-visible
           "
+          data-mobile-open={mobileDrawerOpen ? "true" : "false"}
           style={{
             borderRadius: maximized
               ? designSystem.components.sidebar.radius
@@ -248,6 +268,8 @@ export default function AppLayout({
             onClose={onClose}
             maximized={maximized}
             dragControls={dragControls}
+            mobileDrawer={isMobile}
+            onNavigate={() => setMobileDrawerOpen(false)}
           />
         </motion.div>
 
@@ -313,6 +335,12 @@ export default function AppLayout({
           </main>
         </section>
       </div>
+      {isMobile && (
+        <MobileNavigation
+          drawerOpen={mobileDrawerOpen}
+          onToggleDrawer={() => setMobileDrawerOpen((open) => !open)}
+        />
+      )}
     </div>
   );
 }

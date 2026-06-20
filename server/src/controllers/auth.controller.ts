@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from "../middleware/fetchuser";
 import {
   createUserService,
   getUserByIdService,
+  loginDemoUserService,
   loginUserService,
 } from "../services/auth.service";
 
@@ -11,6 +12,7 @@ const toUserResponse = (user: any) => ({
   id: user._id,
   name: user.name,
   email: user.email,
+  role: user.role,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
@@ -63,6 +65,20 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error logging in:", error);
+    sendAuthError(res, error);
+  }
+};
+
+export const demoLogin = async (_req: Request, res: Response) => {
+  try {
+    const { authToken, user } = await loginDemoUserService();
+    res.status(200).json({
+      success: true,
+      authToken,
+      user: toUserResponse(user),
+    });
+  } catch (error) {
+    console.error("Error opening demo workspace:", error);
     sendAuthError(res, error);
   }
 };

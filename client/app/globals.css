@@ -1052,3 +1052,306 @@ p {
   }
 
 }
+
+/* Responsive app navigation and workspace */
+.notezy-mobile-nav,
+.notezy-mobile-backdrop,
+.notezy-mobile-editor-back {
+  display: none;
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .notezy-app-inner {
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+
+  .notezy-navbar-wrap {
+    padding: 14px 14px 0 !important;
+  }
+
+  .notezy-main {
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 10px 14px 14px !important;
+  }
+
+  .note-workspace {
+    grid-template-columns: minmax(220px, 34vw) minmax(0, 1fr) !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .note-list-panel,
+  .note-editor-workspace {
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .note-editor-workspace {
+    padding: 6px !important;
+  }
+
+  .note-editor-header {
+    padding: 16px 22px 1px !important;
+  }
+
+  .note-editor-content {
+    margin: 8px 22px 58px !important;
+  }
+
+  .note-list-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: 144px !important;
+    gap: 13px !important;
+    padding-bottom: 24px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .notezy-app-shell {
+    border-radius: 0 !important;
+  }
+
+  .notezy-app-inner {
+    display: block !important;
+    padding: 0 0 calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .notezy-sidebar-panel {
+    position: fixed !important;
+    top: 10px !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    left: 10px !important;
+    z-index: 180 !important;
+    width: min(318px, calc(100vw - 28px)) !important;
+    height: auto !important;
+    border-radius: 26px !important;
+    transform: translateX(calc(-100% - 20px));
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 240ms ease;
+  }
+
+  .notezy-sidebar-panel[data-mobile-open="true"] {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .notezy-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 170;
+    display: block;
+    border: 0;
+    background: rgba(20, 24, 48, 0.28);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+
+  .notezy-content-panel {
+    width: 100% !important;
+    height: 100% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .notezy-navbar-row {
+    flex-wrap: nowrap !important;
+  }
+
+  .notezy-navbar-wrap {
+    padding: max(10px, env(safe-area-inset-top)) 12px 0 !important;
+  }
+
+  .notezy-navbar-actions {
+    display: flex !important;
+    width: auto !important;
+    margin-left: 0 !important;
+    gap: 0 !important;
+  }
+
+  .notezy-navbar-actions > :not(.notezy-theme-toggle):not(.notezy-install-button) {
+    display: none !important;
+  }
+
+  .notezy-theme-toggle {
+    display: flex !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 15px !important;
+  }
+
+  .notezy-install-button {
+    display: grid !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 15px !important;
+  }
+
+  .notezy-search-bar {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    width: auto !important;
+    height: 46px !important;
+    padding-inline: 16px !important;
+  }
+
+  .notezy-search-bar input {
+    min-width: 0 !important;
+    width: 100% !important;
+    text-overflow: ellipsis;
+  }
+
+  .notezy-main {
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 8px 12px 10px !important;
+  }
+
+  .note-workspace {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .note-list-panel {
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .note-editor-workspace {
+    display: none !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 0 !important;
+  }
+
+  .note-workspace.mobile-editor-active .note-list-panel {
+    display: none !important;
+  }
+
+  .note-workspace.mobile-editor-active .note-editor-workspace {
+    display: block !important;
+  }
+
+  .notezy-mobile-editor-back {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    z-index: 90;
+    height: 34px;
+    padding: 0 11px;
+    border: 1px solid rgba(255,255,255,0.82);
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #5b4cc4;
+    background: rgba(255,255,255,0.76);
+    box-shadow: 0 8px 18px rgba(70, 62, 116, 0.12);
+    font-size: 12px;
+    font-weight: 850;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .note-editor-paper {
+    padding-top: 38px !important;
+  }
+
+  .note-editor-header {
+    padding: 14px 18px 1px !important;
+  }
+
+  .note-editor-content {
+    margin: 8px 18px 54px !important;
+  }
+
+  .note-list-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: 142px !important;
+    gap: 13px !important;
+    padding-bottom: 26px !important;
+  }
+
+  .notezy-mobile-nav {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 200;
+    height: 62px;
+    padding: 6px 7px;
+    border-radius: 21px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    box-shadow: 0 18px 42px rgba(44, 48, 88, 0.2);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .notezy-mobile-nav button {
+    min-width: 0;
+    height: 49px;
+    border: 0;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .notezy-mobile-nav button:nth-child(3) {
+    width: 52px;
+    height: 52px;
+    justify-self: center;
+    transform: translateY(-8px);
+    border-radius: 18px;
+  }
+
+  .notezy-settings-dialog-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    max-height: 88vh;
+  }
+
+  .notezy-settings-sidebar {
+    padding: 16px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #eae4f0;
+  }
+
+  .notezy-settings-sidebar h2 {
+    margin: 0 0 12px !important;
+  }
+
+  .notezy-settings-tabs {
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .notezy-settings-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .notezy-settings-content {
+    padding: 20px 18px 24px !important;
+    max-height: 62vh !important;
+  }
+}

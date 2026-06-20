@@ -2,6 +2,8 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  role?: "user" | "demo";
+  createdAt?: string;
 };
 
 type AuthResponse = {
@@ -78,6 +80,10 @@ async function authRequest(path: string, body: Record<string, string>) {
 
 export function loginWithEmail(email: string, password: string) {
   return authRequest("/api/auth/login", { email, password });
+}
+
+export function loginAsDemo() {
+  return authRequest("/api/auth/demo", {});
 }
 
 export function signupWithEmail(name: string, email: string, password: string) {

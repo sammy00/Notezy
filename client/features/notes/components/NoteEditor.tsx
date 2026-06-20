@@ -6,9 +6,12 @@ import {
   Bold,
   Calendar,
   Check,
+  CheckCircle2,
   CheckSquare,
   ChevronDown,
   Clipboard,
+  CloudCheck,
+  CloudOff,
   Expand,
   FileDown,
   Highlighter,
@@ -20,6 +23,7 @@ import {
   BookOpen,
   Lightbulb,
   List,
+  LoaderCircle,
   MoreHorizontal,
   Palette,
   Pin,
@@ -654,16 +658,18 @@ function getEditableBody(note: Note) {
 
 type Props = {
   note: Note | null | undefined;
+  isNewNote?: boolean;
   recentNotes?: Note[];
   onChange?: (id: string, title: string, body: string) => void;
   onUpdate?: (id: string, changes: Partial<Note>) => void;
   onDelete?: (id: string) => void;
   onCreateNote?: () => void;
-  saveStatus?: "idle" | "saving" | "saved" | "deleted";
+  saveStatus?: "idle" | "saving" | "saved" | "error" | "deleted";
 };
 
 export default function NoteEditor({
   note,
+  isNewNote = false,
   recentNotes,
   onChange,
   onUpdate,
@@ -773,10 +779,26 @@ export default function NoteEditor({
     saveStatus === "saving"
       ? "Saving..."
       : saveStatus === "saved"
-        ? "Saved"
+        ? "Synced"
+        : saveStatus === "error"
+          ? "Offline"
         : saveStatus === "deleted"
           ? "Deleted"
-          : "Edited just now";
+          : "Saved";
+  const saveStatusColor =
+    saveStatus === "saving"
+      ? t.pin
+      : saveStatus === "error" || saveStatus === "deleted"
+        ? "#D94D5B"
+        : "#27966B";
+  const SaveStatusIcon =
+    saveStatus === "saving"
+      ? LoaderCircle
+      : saveStatus === "saved"
+        ? CloudCheck
+        : saveStatus === "error"
+          ? CloudOff
+          : CheckCircle2;
   const plainBodyText = bodyText
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(div|p|li|h[1-6])>/gi, "\n")
@@ -1088,9 +1110,16 @@ export default function NoteEditor({
         <motion.section
           className="note-editor-paper"
           key={note.id}
-          initial={{ opacity: 0, y: 8, scale: 0.998, filter: "blur(2px)" }}
+          initial={{
+            opacity: 0,
+            x: isNewNote ? 28 : 0,
+            y: isNewNote ? 10 : 8,
+            scale: isNewNote ? 0.988 : 0.998,
+            filter: "blur(2px)",
+          }}
           animate={{
             opacity: 1,
+            x: 0,
             y: 0,
             scale: 1,
             filter: "blur(0px)",
@@ -1104,6 +1133,7 @@ export default function NoteEditor({
           }
           transition={{
             ...noteSwitchTransition,
+            duration: isNewNote ? 0.34 : noteSwitchTransition.duration,
             boxShadow: { duration: 0.22, ease: [0.22, 0.61, 0.36, 1] },
             layout: { duration: 0.24, ease: [0.22, 0.61, 0.36, 1] },
           }}
@@ -1206,18 +1236,41 @@ export default function NoteEditor({
                   <span aria-hidden>•</span>
                   <motion.span
                     key={saveStatusLabel}
-                    initial={{ opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.16 }}
+                    role="status"
+                    aria-live="polite"
+                    initial={{ opacity: 0, y: 3, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.18 }}
                     style={{
-                      color:
-                        saveStatus === "saving"
-                          ? t.pin
-                          : saveStatus === "deleted"
-                            ? "#EF4444"
-                            : "inherit",
+                      minWidth: 82,
+                      height: 25,
+                      padding: "0 9px",
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      color: saveStatusColor,
+                      background: `${saveStatusColor}0E`,
+                      border: `1px solid ${saveStatusColor}20`,
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.72)",
+                      fontSize: 11.5,
+                      fontWeight: 800,
                     }}
                   >
+                    <motion.span
+                      animate={
+                        saveStatus === "saving" ? { rotate: 360 } : { rotate: 0 }
+                      }
+                      transition={
+                        saveStatus === "saving"
+                          ? { duration: 0.9, repeat: Infinity, ease: "linear" }
+                          : { duration: 0.16 }
+                      }
+                      style={{ display: "inline-flex" }}
+                    >
+                      <SaveStatusIcon size={13.5} strokeWidth={2.25} />
+                    </motion.span>
                     {saveStatusLabel}
                   </motion.span>
                 </div>

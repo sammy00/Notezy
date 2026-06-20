@@ -347,16 +347,17 @@ export default function NoteCard({
           </div>
 
           <div
-              style={{
+            style={{
               position: "relative",
               zIndex: 3,
-              height: "100%",
+              height: isGrid ? 68 : 62,
               paddingRight: isGrid ? 84 : 44,
+              overflow: "hidden",
             }}
           >
             <h3
               style={{
-                margin: isGrid ? "0 0 9px" : "0 0 6px",
+                margin: isGrid ? "0 0 8px" : "0 0 6px",
                 fontFamily: "var(--font-ui)",
                 fontSize: isGrid ? 17 : 18,
                 fontWeight: 700,
@@ -379,10 +380,13 @@ export default function NoteCard({
                 lineHeight: isGrid ? 1.48 : 1.45,
                 color: t.body,
                 opacity: 0.82,
-                whiteSpace: "pre-line",
-                maxHeight: isGrid ? 58 : 36,
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
                 overflow: "hidden",
-                textOverflow: "clip",
+                textOverflow: "ellipsis",
               }}
             >
               {note.preview}
@@ -394,12 +398,13 @@ export default function NoteCard({
               position: "absolute",
               left: 28,
               right: isGrid ? 104 : 24,
-              bottom: isGrid ? 48 : 26,
+              bottom: isGrid ? 38 : 22,
               zIndex: 24,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               gap: 14,
+              minHeight: 18,
             }}
           >
             <div
@@ -423,6 +428,7 @@ export default function NoteCard({
                   padding: 0,
                   textShadow: "0 1px 0 rgba(255,255,255,0.46)",
                   whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 {note.date}

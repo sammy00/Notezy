@@ -1,47 +1,51 @@
 import type { MetadataRoute } from "next";
 
-const icon = "/icons/575d6b91-2f68-446b-a345-10eb04b8383f.png";
-
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Notezy",
     short_name: "Notezy",
     description: "Think it. Notezy it.",
-    start_url: "/",
+    start_url: "/app",
     scope: "/",
     display: "standalone",
     background_color: "#F3F1FA",
     theme_color: "#8B6BEA",
+    orientation: "any",
+    categories: ["productivity", "utilities"],
     icons: [
       {
-        src: icon,
+        src: "/icons/notezy-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: icon,
+        src: "/icons/notezy-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: icon,
+        src: "/icons/notezy-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: icon,
+        src: "/icons/notezy-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },
+    ],
+    shortcuts: [
       {
-        src: icon,
-        sizes: "1024x1024",
-        type: "image/png",
-        purpose: "any",
+        name: "New note",
+        short_name: "New note",
+        description: "Open Notezy and create a note",
+        url: "/app?action=new-note",
+        icons: [{ src: "/icons/notezy-192.png", sizes: "192x192" }],
       },
     ],
   };

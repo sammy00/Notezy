@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  ArrowLeft,
   SlidersHorizontal,
   Grid2X2,
   List as ListIcon,
@@ -29,16 +30,23 @@ import {
   updateNote as updateNoteApi,
 } from "./api/notesApi";
 import { getStoredAuthUser } from "@/features/auth/authClient";
+import { showToast } from "@/shared/toast";
 
 const NEW_NOTE_EVENT = "notezy:create-note";
 const NOTE_FILTER_EVENT = "notezy:set-note-filter";
 const NOTE_SEARCH_EVENT = "notezy:set-note-search";
 const NOTE_CATEGORY_EVENT = "notezy:update-note-category";
 const NOTE_CATEGORY_COUNTS_EVENT = "notezy:update-category-counts";
+const SHOW_NOTES_EVENT = "notezy:show-notes";
 const NOTES_CACHE_KEY = "notezy-notes-cache";
 
-type SaveStatus = "idle" | "saving" | "saved" | "deleted";
-type NoteFilter = "all" | "favorites" | "pinned" | "trash" | "category";
+type SaveStatus = "idle" | "saving" | "saved" | "error" | "deleted";
+type NoteFilter = "all" | "favorites" | "pinned" | "tasks" | "trash" | "category";
+
+const hasChecklist = (note: Note) =>
+  note.content.split("\n").some((line) =>
+    /^\s*(?:[-*]\s*)?(?:\[[ xX]\]|✓|✔|☐|☑)\s+/.test(line),
+  );
 
 function createBlankNote(category: NoteCategory = "personal"): Note {
   return {
@@ -176,6 +184,13 @@ export default function NoteWorkspace() {
   const isCreatingNoteRef = useRef(false);
   const saveStatusTimeoutRef = useRef<number | null>(null);
   const textSaveTimeoutRef = useRef<number | null>(null);
+  const pendingTextSaveRef = useRef<{
+    id: string;
+    changes: Partial<Note>;
+  } | null>(null);
+  const persistNoteChangesRef = useRef<
+    (id: string, changes: Partial<Note>, notify?: boolean) => void
+  >(() => undefined);
 
   const visibleNotes = useMemo(() => {
     const filteredBySidebar =
@@ -183,6 +198,8 @@ export default function NoteWorkspace() {
         ? notes.filter((note) => !note.trashed && note.starred)
         : activeFilter === "pinned"
           ? notes.filter((note) => !note.trashed && note.pinned)
+        : activeFilter === "tasks"
+          ? notes.filter((note) => !note.trashed && hasChecklist(note))
           : activeFilter === "trash"
             ? notes.filter((note) => note.trashed)
           : activeFilter === "category"
@@ -219,7 +236,9 @@ export default function NoteWorkspace() {
       : activeFilter === "favorites"
         ? "Favorites"
         : activeFilter === "pinned"
-          ? "Pinned"
+        ? "Pinned"
+        : activeFilter === "tasks"
+          ? "Tasks"
           : activeFilter === "trash"
             ? "Trash"
           : activeFilter === "category"
@@ -260,8 +279,20 @@ export default function NoteWorkspace() {
       }
     });
 
+    const activeNotes = notes.filter((note) => !note.trashed);
+
     window.dispatchEvent(
-      new CustomEvent(NOTE_CATEGORY_COUNTS_EVENT, { detail: { counts } }),
+      new CustomEvent(NOTE_CATEGORY_COUNTS_EVENT, {
+        detail: {
+          counts,
+          mainCounts: {
+            all: activeNotes.length,
+            favorites: activeNotes.filter((note) => note.starred).length,
+            pinned: activeNotes.filter((note) => note.pinned).length,
+            tasks: activeNotes.filter(hasChecklist).length,
+          },
+        },
+      }),
     );
   }, [notes]);
 
@@ -400,6 +431,7 @@ export default function NoteWorkspace() {
         filter === "all" ||
         filter === "favorites" ||
         filter === "pinned" ||
+        filter === "tasks" ||
         filter === "trash"
       ) {
         setActiveFilter(filter);
@@ -429,6 +461,16 @@ export default function NoteWorkspace() {
 
     return () =>
       window.removeEventListener(NOTE_SEARCH_EVENT, handleSearchChange);
+  }, []);
+
+  useEffect(() => {
+    const showNotesList = () => {
+      setActiveId("");
+      setViewMode("list");
+    };
+
+    window.addEventListener(SHOW_NOTES_EVENT, showNotesList);
+    return () => window.removeEventListener(SHOW_NOTES_EVENT, showNotesList);
   }, []);
 
   useEffect(() => {
@@ -517,19 +559,34 @@ export default function NoteWorkspace() {
     };
   }, []);
 
-  const persistNoteChanges = (id: string, changes: Partial<Note>) => {
+  const persistNoteChanges = (
+    id: string,
+    changes: Partial<Note>,
+    notify = false,
+  ) => {
+    if (pendingTextSaveRef.current?.id === id) {
+      pendingTextSaveRef.current = null;
+    }
+
     if (!isPersistedNoteId(id)) {
       showSaveStatus("saved");
+      if (notify) showToast("Note Saved");
       return;
     }
 
     void updateNoteApi(id, changes)
-      .then(() => showSaveStatus("saved"))
+      .then(() => {
+        showSaveStatus("saved");
+        if (notify) showToast("Note Saved");
+      })
       .catch((error) => {
         console.warn("Note update could not be persisted.", error);
-        showSaveStatus("idle");
+        showSaveStatus("error");
       });
   };
+  useEffect(() => {
+    persistNoteChangesRef.current = persistNoteChanges;
+  });
 
   const updateNote = (id: string, changes: Partial<Note>) => {
     const previousNotes = notes;
@@ -559,7 +616,7 @@ export default function NoteWorkspace() {
         console.warn("Note update could not be persisted.", error);
         setNotes(previousNotes);
         cacheNotes(previousNotes);
-        showSaveStatus("idle");
+        showSaveStatus("error");
       });
   };
 
@@ -592,10 +649,53 @@ export default function NoteWorkspace() {
       window.clearTimeout(textSaveTimeoutRef.current);
     }
 
+    pendingTextSaveRef.current = { id, changes };
     textSaveTimeoutRef.current = window.setTimeout(() => {
+      textSaveTimeoutRef.current = null;
       persistNoteChanges(id, changes);
     }, 950);
   };
+
+  useEffect(() => {
+    const handleKeyboardShortcut = (event: KeyboardEvent) => {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "n") {
+        event.preventDefault();
+        void createAndSelectNote();
+        return;
+      }
+
+      if (key === "s") {
+        event.preventDefault();
+        const pendingSave = pendingTextSaveRef.current;
+
+        if (textSaveTimeoutRef.current) {
+          window.clearTimeout(textSaveTimeoutRef.current);
+          textSaveTimeoutRef.current = null;
+        }
+
+        if (pendingSave) {
+          persistNoteChangesRef.current(
+            pendingSave.id,
+            pendingSave.changes,
+            true,
+          );
+        } else {
+          showSaveStatus("saved");
+          showToast("Note Saved");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyboardShortcut);
+
+    return () => window.removeEventListener("keydown", handleKeyboardShortcut);
+  }, [createAndSelectNote]);
 
   const stripNoteHtml = (value: string) =>
     value
@@ -677,7 +777,7 @@ export default function NoteWorkspace() {
 
   return (
     <div
-      className="note-workspace"
+      className={`note-workspace ${selectedNote ? "mobile-editor-active" : ""}`}
       style={{
         display: "grid",
         gridTemplateColumns:
@@ -818,7 +918,10 @@ export default function NoteWorkspace() {
             onFavorite={(note) =>
               updateNote(note.id, { starred: !note.starred })
             }
-            onPin={(note) => updateNote(note.id, { pinned: !note.pinned })}
+            onPin={(note) => {
+              updateNote(note.id, { pinned: !note.pinned });
+              showToast(note.pinned ? "Note Unpinned" : "Note Pinned");
+            }}
             isTrashView={activeFilter === "trash"}
             isLoading={isLoadingNotes}
             newNoteId={newNoteId}
@@ -960,14 +1063,25 @@ export default function NoteWorkspace() {
       }}
     >
       {selectedNote ? (
-        <NoteEditor
-          note={selectedNote}
-          onChange={(id, title, body) => updateNoteText(id, title, body)}
-          onUpdate={updateNote}
-          onDelete={deleteNote}
-          onCreateNote={() => void createAndSelectNote()}
-          saveStatus={saveStatus}
-        />
+        <>
+          <button
+            type="button"
+            className="notezy-mobile-editor-back"
+            onClick={() => setActiveId("")}
+          >
+            <ArrowLeft size={17} strokeWidth={2.4} />
+            Notes
+          </button>
+          <NoteEditor
+            note={selectedNote}
+            isNewNote={selectedNote.id === newNoteId}
+            onChange={(id, title, body) => updateNoteText(id, title, body)}
+            onUpdate={updateNote}
+            onDelete={deleteNote}
+            onCreateNote={() => void createAndSelectNote()}
+            saveStatus={saveStatus}
+          />
+        </>
       ) : (
         <WorkspaceEmptyState
           onCreateNote={() => void createAndSelectNote()}

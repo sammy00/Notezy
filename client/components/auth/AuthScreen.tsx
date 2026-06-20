@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { loginWithEmail, signupWithEmail } from "@/features/auth/authClient";
+import {
+  loginAsDemo,
+  loginWithEmail,
+  signupWithEmail,
+} from "@/features/auth/authClient";
 
 type Props = {
   mode: "login" | "signup";
@@ -38,6 +42,23 @@ export default function AuthScreen({ mode }: Props) {
           : "Authentication failed",
       );
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      await loginAsDemo();
+      window.location.replace("/app");
+    } catch (authError) {
+      setError(
+        authError instanceof Error
+          ? authError.message
+          : "The demo workspace could not be opened",
+      );
       setLoading(false);
     }
   };
@@ -182,6 +203,49 @@ export default function AuthScreen({ mode }: Props) {
                 : "Sign In"}
           </button>
         </form>
+
+        {!isSignup && (
+          <div style={{ marginTop: 18, display: "grid", gap: 14 }}>
+            <div
+              aria-hidden="true"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto 1fr",
+                alignItems: "center",
+                gap: 10,
+                color: "rgba(67,75,119,0.5)",
+                fontSize: 11,
+                fontWeight: 800,
+              }}
+            >
+              <span style={{ height: 1, background: "rgba(87,93,132,0.16)" }} />
+              OR
+              <span style={{ height: 1, background: "rgba(87,93,132,0.16)" }} />
+            </div>
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={loading}
+              style={{
+                height: 46,
+                border: "1px solid rgba(109,77,226,0.22)",
+                borderRadius: 15,
+                background: "rgba(255,255,255,0.58)",
+                color: "#6545D6",
+                fontSize: 14,
+                fontWeight: 850,
+                cursor: loading ? "wait" : "pointer",
+                opacity: loading ? 0.72 : 1,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 24px rgba(109,77,226,0.10)",
+              }}
+            >
+              {loading ? "Opening workspace..." : "🚀 Try Demo Account"}
+            </button>
+            <p style={{ margin: -4, textAlign: "center", color: "rgba(67,75,119,0.58)", fontSize: 11, fontWeight: 650 }}>
+              No signup required · Resets to sample notes on login
+            </p>
+          </div>
+        )}
 
         <p
           style={{

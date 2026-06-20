@@ -10,6 +10,11 @@ import {
 } from "@/features/auth/authClient";
 import { useTheme } from "@/shared/theme/ThemeProvider";
 import { designSystem } from "@/shared/theme/DesignSystem";
+import { showToast } from "@/shared/toast";
+import PwaInstallButton from "@/components/ui/PwaInstallButton";
+import WorkspaceDialog, {
+  WorkspaceDialogType,
+} from "@/components/ui/WorkspaceDialog";
 
 const ACTIONS = [
   {
@@ -24,6 +29,9 @@ const ACTIONS = [
 ];
 
 const NOTE_SEARCH_EVENT = "notezy:set-note-search";
+const FOCUS_SEARCH_EVENT = "notezy:focus-search";
+const NOTIFICATIONS_READ_KEY = "notezy-notifications-read-version";
+const NOTIFICATIONS_VERSION = "1";
 
 function ProfileMenuButton({
   label,
@@ -107,8 +115,11 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
   const [profileOpen, setProfileOpen] = useState(false);
+  const [workspaceDialog, setWorkspaceDialog] =
+    useState<WorkspaceDialogType | null>(null);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [profileView, setProfileView] = useState<
-    "menu" | "profile" | "settings" | "logout"
+    "menu" | "profile" | "logout"
   >("menu");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const isLoggedIn = Boolean(getStoredAuthToken());
@@ -128,6 +139,20 @@ export default function Navbar() {
     );
   };
 
+  const markNotificationsRead = () => {
+    localStorage.setItem(NOTIFICATIONS_READ_KEY, NOTIFICATIONS_VERSION);
+    setHasUnreadNotifications(false);
+  };
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setHasUnreadNotifications(
+        localStorage.getItem(NOTIFICATIONS_READ_KEY) !== NOTIFICATIONS_VERSION,
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -144,6 +169,13 @@ export default function Navbar() {
     window.addEventListener("keydown", handleShortcut);
 
     return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    const focusSearch = () => searchInputRef.current?.focus();
+
+    window.addEventListener(FOCUS_SEARCH_EVENT, focusSearch);
+    return () => window.removeEventListener(FOCUS_SEARCH_EVENT, focusSearch);
   }, []);
 
   useEffect(() => {
@@ -167,6 +199,27 @@ export default function Navbar() {
     window.addEventListener("notezy:auth-changed", syncAuthUser);
 
     return () => window.removeEventListener("notezy:auth-changed", syncAuthUser);
+  }, []);
+
+  useEffect(() => {
+    const openWorkspaceDialog = (event: Event) => {
+      const dialog = (event as CustomEvent<{ dialog?: WorkspaceDialogType }>)
+        .detail?.dialog;
+      if (dialog) {
+        if (dialog === "notifications") {
+          localStorage.setItem(NOTIFICATIONS_READ_KEY, NOTIFICATIONS_VERSION);
+          setHasUnreadNotifications(false);
+        }
+        setWorkspaceDialog(dialog);
+      }
+    };
+
+    window.addEventListener("notezy:open-workspace-dialog", openWorkspaceDialog);
+    return () =>
+      window.removeEventListener(
+        "notezy:open-workspace-dialog",
+        openWorkspaceDialog,
+      );
   }, []);
 
   const logout = () => {
@@ -208,7 +261,7 @@ export default function Navbar() {
         <motion.div
           whileHover={{ y: -1 }}
           transition={{ type: "spring", stiffness: 240, damping: 20 }}
-          className="notezy-search-bar flex w-full max-w-[400px] items-center gap-3 px-[22px]"
+          className="notezy-search-bar flex min-w-0 flex-1 max-w-[400px] items-center gap-3 px-[22px]"
           style={{
             ...searchGlass,
             ...(mode === "dark"
@@ -241,7 +294,7 @@ export default function Navbar() {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             onChange={(event) => updateSearch(event.target.value)}
-            className="flex-1 bg-transparent outline-none"
+            className="min-w-0 flex-1 bg-transparent outline-none"
             style={{
               color: colors.textPrimary,
               fontSize: designSystem.typography.body,
@@ -309,6 +362,16 @@ export default function Navbar() {
           {ACTIONS.map(({ label, icon: Icon, dot }) => (
             <motion.button
               key={label}
+              type="button"
+              aria-label={label}
+              title={label}
+              onClick={() => {
+                setProfileOpen(false);
+                const dialog =
+                  label === "Settings" ? "settings" : "notifications";
+                if (dialog === "notifications") markNotificationsRead();
+                setWorkspaceDialog(dialog);
+              }}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 260, damping: 18 }}
@@ -335,32 +398,38 @@ export default function Navbar() {
                 strokeWidth={2.2}
               />
 
-              {dot && (
+              {dot && hasUnreadNotifications && (
                 <span
+                  aria-label="Unread notifications"
                   className="absolute rounded-full"
                   style={{
-                    width: 8,
-                    height: 8,
+                    width: 9,
+                    height: 9,
                     top: 8,
                     right: 10,
-                    background: "#F4B73B",
+                    background: "#8B5CF6",
                     boxShadow:
-                      "0 0 0 3px rgba(255,255,255,0.86), 0 2px 5px rgba(212,143,30,0.22)",
+                      "0 0 0 3px rgba(255,255,255,0.90), 0 2px 8px rgba(139,92,246,0.38)",
                   }}
                 />
               )}
             </motion.button>
           ))}
 
+          <PwaInstallButton />
+
           <motion.button
             type="button"
             aria-label={mode === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             title={mode === "dark" ? "Light theme" : "Dark theme"}
-            onClick={toggleTheme}
+            onClick={() => {
+              toggleTheme();
+              showToast("Theme Updated");
+            }}
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", stiffness: 240, damping: 20 }}
-            className="hidden xl:flex items-center"
+            className="notezy-theme-toggle flex shrink-0 items-center justify-center"
             style={{
               ...actionGlass,
               ...(mode === "dark"
@@ -540,12 +609,25 @@ export default function Navbar() {
                       }}
                     />
                     <ProfileMenuButton
-                      label="Profile"
-                      onClick={() => setProfileView("profile")}
+                      label="View Profile"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setWorkspaceDialog("profile");
+                      }}
                     />
                     <ProfileMenuButton
-                      label="Settings"
-                      onClick={() => setProfileView("settings")}
+                      label="Usage Statistics"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setWorkspaceDialog("usage");
+                      }}
+                    />
+                    <ProfileMenuButton
+                      label="Keyboard Shortcuts"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setWorkspaceDialog("shortcuts");
+                      }}
                     />
                     <ProfileMenuButton
                       danger
@@ -570,25 +652,6 @@ export default function Navbar() {
                     <ProfileInfoRow label="Email" value={authUser?.email ?? "No email"} />
                     <ProfileInfoRow label="Member Since" value="Current account" />
                     <ProfileInfoRow label="Plan" value="Free Plan" />
-                  </>
-                ) : isLoggedIn && profileView === "settings" ? (
-                  <>
-                    <ProfileMenuButton
-                      label="Back"
-                      onClick={() => setProfileView("menu")}
-                    />
-                    <div
-                      style={{
-                        height: 1,
-                        margin: "4px 2px 6px",
-                        background: "rgba(223,219,239,0.92)",
-                      }}
-                    />
-                    <ProfileInfoRow label="Theme" value={mode === "dark" ? "Dark" : "Light"} />
-                    <ProfileInfoRow label="Accent" value="Deep Lavender" />
-                    <ProfileInfoRow label="Default Color" value="Classic Paper" />
-                    <ProfileInfoRow label="Font Size" value="16 px" />
-                    <ProfileInfoRow label="Auto Save" value="On" />
                   </>
                 ) : isLoggedIn && profileView === "logout" ? (
                   <>
@@ -670,6 +733,13 @@ export default function Navbar() {
               ? "linear-gradient(90deg, rgba(210,214,228,0), rgba(210,214,228,0.82), rgba(210,214,228,0))"
               : "linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.12), rgba(255,255,255,0))",
         }}
+      />
+      <WorkspaceDialog
+        open={workspaceDialog}
+        user={authUser}
+        notificationsRead={!hasUnreadNotifications}
+        onMarkNotificationsRead={markNotificationsRead}
+        onClose={() => setWorkspaceDialog(null)}
       />
     </div>
   );
