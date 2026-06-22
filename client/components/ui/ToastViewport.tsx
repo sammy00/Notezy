@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, CircleAlert, Info } from "lucide-react";
 import {
@@ -16,6 +17,12 @@ type ToastItem = {
 
 export default function ToastViewport() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     const handleToast = (event: Event) => {
@@ -42,17 +49,16 @@ export default function ToastViewport() {
     return () => window.removeEventListener(NOTEZY_TOAST_EVENT, handleToast);
   }, []);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
+      className="notezy-toast-viewport"
       aria-live="polite"
       aria-atomic="true"
       style={{
-        position: "absolute",
-        top: 78,
-        right: 28,
-        zIndex: 10000,
         display: "grid",
-        justifyItems: "end",
+        justifyItems: "center",
         gap: 9,
         pointerEvents: "none",
       }}
@@ -81,8 +87,10 @@ export default function ToastViewport() {
               exit={{ opacity: 0, x: 12, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
               style={{
+                width: "max-content",
                 minWidth: 190,
-                height: 46,
+                maxWidth: "min(360px, calc(100vw - 32px))",
+                minHeight: 46,
                 padding: "0 15px 0 11px",
                 borderRadius: 15,
                 display: "flex",
@@ -97,6 +105,8 @@ export default function ToastViewport() {
                 WebkitBackdropFilter: "blur(18px) saturate(160%)",
                 fontSize: 12.5,
                 fontWeight: 800,
+                lineHeight: 1.35,
+                overflowWrap: "anywhere",
               }}
             >
               <span
@@ -117,6 +127,7 @@ export default function ToastViewport() {
           );
         })}
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body,
   );
 }

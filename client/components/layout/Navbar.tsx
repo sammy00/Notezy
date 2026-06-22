@@ -15,6 +15,7 @@ import PwaInstallButton from "@/components/ui/PwaInstallButton";
 import WorkspaceDialog, {
   WorkspaceDialogType,
 } from "@/components/ui/WorkspaceDialog";
+import { usePathname } from "next/navigation";
 
 const ACTIONS = [
   {
@@ -111,6 +112,7 @@ function ProfileInfoRow({
 
 export default function Navbar() {
   const { mode, colors, toggleTheme } = useTheme();
+  const pathname = usePathname();
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
@@ -122,6 +124,7 @@ export default function Navbar() {
     "menu" | "profile" | "logout"
   >("menu");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const isLoggedIn = Boolean(getStoredAuthToken());
   const profileName = authUser?.name ?? "Sign in";
   const initials =
@@ -177,6 +180,30 @@ export default function Navbar() {
     window.addEventListener(FOCUS_SEARCH_EVENT, focusSearch);
     return () => window.removeEventListener(FOCUS_SEARCH_EVENT, focusSearch);
   }, []);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+        setProfileView("menu");
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        setProfileView("menu");
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [profileOpen]);
 
   useEffect(() => {
     const handleSearchSync = (event: Event) => {
@@ -290,7 +317,7 @@ export default function Navbar() {
           <input
             ref={searchInputRef}
             value={searchQuery}
-            placeholder="Search Anything"
+            placeholder={pathname === "/app/tasks" ? "Search tasks" : "Search notes"}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             onChange={(event) => updateSearch(event.target.value)}
@@ -470,7 +497,7 @@ export default function Navbar() {
             </span>
           </motion.button>
 
-          <div className="relative">
+          <div className="relative" ref={profileMenuRef}>
             <motion.button
               type="button"
               aria-label="Open profile menu"

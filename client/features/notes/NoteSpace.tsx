@@ -38,22 +38,21 @@ const NOTE_SEARCH_EVENT = "notezy:set-note-search";
 const NOTE_CATEGORY_EVENT = "notezy:update-note-category";
 const NOTE_CATEGORY_COUNTS_EVENT = "notezy:update-category-counts";
 const SHOW_NOTES_EVENT = "notezy:show-notes";
+const OPEN_NOTE_EVENT = "notezy:open-note";
 const NOTES_CACHE_KEY = "notezy-notes-cache";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error" | "deleted";
-type NoteFilter = "all" | "favorites" | "pinned" | "tasks" | "trash" | "category";
+type NoteFilter = "all" | "favorites" | "pinned" | "trash" | "category";
 
-const hasChecklist = (note: Note) =>
-  note.content.split("\n").some((line) =>
-    /^\s*(?:[-*]\s*)?(?:\[[ xX]\]|✓|✔|☐|☑)\s+/.test(line),
-  );
-
-function createBlankNote(category: NoteCategory = "personal"): Note {
+function createBlankNote(
+  category: NoteCategory = "personal",
+): Note {
+  const title = "Untitled Note";
   return {
     id: `note-${Date.now()}-${crypto.randomUUID()}`,
-    title: "Untitled Note",
+    title,
     preview: "",
-    content: "# Untitled Note\n\n",
+    content: `# ${title}\n\n`,
     tone: "paper",
     date: "Today",
     starred: false,
@@ -192,15 +191,38 @@ export default function NoteWorkspace() {
     (id: string, changes: Partial<Note>, notify?: boolean) => void
   >(() => undefined);
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const params = new URLSearchParams(window.location.search);
+      const filter = params.get("filter");
+      const category = params.get("category");
+      const noteId = params.get("note");
+
+      if (noteId) {
+        setActiveFilter("all");
+        setActiveId(noteId);
+        setViewMode("list");
+        return;
+      }
+
+      if (filter === "favorites" || filter === "pinned") {
+        setActiveFilter(filter);
+      } else if (filter === "category" && category) {
+        setActiveFilter("category");
+        setActiveCategory(normalizeNoteCategory(category));
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   const visibleNotes = useMemo(() => {
     const filteredBySidebar =
       activeFilter === "favorites"
         ? notes.filter((note) => !note.trashed && note.starred)
         : activeFilter === "pinned"
           ? notes.filter((note) => !note.trashed && note.pinned)
-        : activeFilter === "tasks"
-          ? notes.filter((note) => !note.trashed && hasChecklist(note))
-          : activeFilter === "trash"
+        : activeFilter === "trash"
             ? notes.filter((note) => note.trashed)
           : activeFilter === "category"
             ? notes.filter(
@@ -215,7 +237,7 @@ export default function NoteWorkspace() {
       return filteredBySidebar;
     }
 
-    return filteredBySidebar.filter((note) => {
+    return notes.filter((note) => !note.trashed).filter((note) => {
       const searchableText = [
         note.title,
         note.preview,
@@ -237,9 +259,7 @@ export default function NoteWorkspace() {
         ? "Favorites"
         : activeFilter === "pinned"
         ? "Pinned"
-        : activeFilter === "tasks"
-          ? "Tasks"
-          : activeFilter === "trash"
+        : activeFilter === "trash"
             ? "Trash"
           : activeFilter === "category"
             ? activeCategory
@@ -289,7 +309,6 @@ export default function NoteWorkspace() {
             all: activeNotes.length,
             favorites: activeNotes.filter((note) => note.starred).length,
             pinned: activeNotes.filter((note) => note.pinned).length,
-            tasks: activeNotes.filter(hasChecklist).length,
           },
         },
       }),
@@ -364,10 +383,8 @@ export default function NoteWorkspace() {
     const loadNotes = async () => {
       const cachedNotes = readCachedNotes();
 
-      if (cachedNotes.length > 0) {
-        setNotes(cachedNotes);
-        setIsLoadingNotes(false);
-      }
+      setNotes(cachedNotes);
+      setIsLoadingNotes(false);
 
       try {
         const [apiNotes, trashedNotes] = await Promise.all([
@@ -412,7 +429,10 @@ export default function NoteWorkspace() {
   }, []);
 
   useEffect(() => {
-    const handleCreateNote = () => void createAndSelectNote();
+    const handleCreateNote = (event: Event) => {
+      void event;
+      void createAndSelectNote();
+    };
 
     window.addEventListener(NEW_NOTE_EVENT, handleCreateNote);
 
@@ -431,7 +451,6 @@ export default function NoteWorkspace() {
         filter === "all" ||
         filter === "favorites" ||
         filter === "pinned" ||
-        filter === "tasks" ||
         filter === "trash"
       ) {
         setActiveFilter(filter);
@@ -461,6 +480,21 @@ export default function NoteWorkspace() {
 
     return () =>
       window.removeEventListener(NOTE_SEARCH_EVENT, handleSearchChange);
+  }, []);
+
+  useEffect(() => {
+    const openNote = (event: Event) => {
+      const noteId = (event as CustomEvent<{ noteId?: string }>).detail?.noteId;
+      if (!noteId) return;
+      setActiveFilter("all");
+      setActiveCategory("");
+      setSearchQuery("");
+      setActiveId(noteId);
+      setViewMode("list");
+    };
+
+    window.addEventListener(OPEN_NOTE_EVENT, openNote);
+    return () => window.removeEventListener(OPEN_NOTE_EVENT, openNote);
   }, []);
 
   useEffect(() => {
@@ -893,6 +927,11 @@ export default function NoteWorkspace() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="note-mobile-category-chips" aria-label="Note categories">
+          <button className={activeFilter === "all" ? "active" : ""} type="button" onClick={() => { setActiveFilter("all"); setActiveCategory(""); }}>All</button>
+          {(["personal", "work", "journal", "ideas"] as NoteCategory[]).map((category) => <button className={activeFilter === "category" && activeCategory === category ? "active" : ""} type="button" key={category} onClick={() => { setActiveFilter("category"); setActiveCategory(category); }}>{getNoteCategoryLabel(category)}</button>)}
         </div>
 
         <div

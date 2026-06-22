@@ -55,7 +55,7 @@ export default function AppLayout({
 
   useEffect(() => {
     const syncResponsiveSidebar = () => {
-      const mobile = window.innerWidth <= 640;
+      const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
 
       if (mobile) {
@@ -298,7 +298,8 @@ export default function AppLayout({
                   linear-gradient(145deg, rgba(255,255,255,0.58), rgba(242,245,253,0.36))
                 ` 
                 : `
-                  #1C2450
+                  radial-gradient(circle at 82% 4%, rgba(109,76,205,0.10), transparent 28%),
+                  #131A4A
                 `,
             border:
               mode === "light"
@@ -339,6 +340,7 @@ export default function AppLayout({
         <MobileNavigation
           drawerOpen={mobileDrawerOpen}
           onToggleDrawer={() => setMobileDrawerOpen((open) => !open)}
+          onCloseDrawer={() => setMobileDrawerOpen(false)}
         />
       )}
     </div>

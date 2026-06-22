@@ -3,35 +3,25 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bold,
   Calendar,
   Check,
   CheckCircle2,
-  CheckSquare,
   ChevronDown,
   Clipboard,
   CloudCheck,
   CloudOff,
-  Expand,
   FileDown,
-  Highlighter,
   Home,
-  Image as ImageIcon,
   Info,
-  Italic,
   Briefcase,
   BookOpen,
   Lightbulb,
-  List,
   LoaderCircle,
   MoreHorizontal,
   Palette,
   Pin,
-  Redo2,
   Star,
   Trash2,
-  Underline,
-  Undo2,
 } from "lucide-react";
 import { NOTE_TONE_OPTIONS } from "../constants/noteToneOptions";
 import { getNoteCategoryLabel, Note, NOTE_CATEGORIES } from "../types/note";
@@ -774,6 +764,7 @@ export default function NoteEditor({
   }
 
   const t = NOTE_EDITOR_THEME[note.tone] ?? NOTE_EDITOR_THEME.paper;
+  const noteCardTheme = NOTE_THEME[note.tone] ?? NOTE_THEME.paper;
   const bodyText = getEditableBody(note);
   const saveStatusLabel =
     saveStatus === "saving"
@@ -786,11 +777,17 @@ export default function NoteEditor({
           ? "Deleted"
           : "Saved";
   const saveStatusColor =
-    saveStatus === "saving"
-      ? t.pin
-      : saveStatus === "error" || saveStatus === "deleted"
-        ? "#D94D5B"
-        : "#27966B";
+    saveStatus === "error" || saveStatus === "deleted"
+      ? "#D94D5B"
+      : noteCardTheme.date;
+  const saveStatusBackground =
+    saveStatus === "error" || saveStatus === "deleted"
+      ? "#FDEBED"
+      : noteCardTheme.bg;
+  const saveStatusBorder =
+    saveStatus === "error" || saveStatus === "deleted"
+      ? "#F4CDD2"
+      : noteCardTheme.edge;
   const SaveStatusIcon =
     saveStatus === "saving"
       ? LoaderCircle
@@ -1251,8 +1248,8 @@ export default function NoteEditor({
                       justifyContent: "center",
                       gap: 6,
                       color: saveStatusColor,
-                      background: `${saveStatusColor}0E`,
-                      border: `1px solid ${saveStatusColor}20`,
+                      background: saveStatusBackground,
+                      border: `1px solid ${saveStatusBorder}`,
                       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.72)",
                       fontSize: 11.5,
                       fontWeight: 800,
@@ -1845,66 +1842,6 @@ function EditorMenu({
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-function EditorBottomToolbar() {
-  const wordCount = 0;
-  const characterCount = 0;
-
-  const leftTools = [
-    { label: "Bold", icon: <Bold size={20} strokeWidth={2.1} />, active: true },
-    { label: "Italic", icon: <Italic size={20} strokeWidth={2.05} /> },
-    { label: "Underline", icon: <Underline size={20} strokeWidth={2.05} /> },
-    { label: "Highlight", icon: <Highlighter size={20} strokeWidth={2.05} /> },
-    { label: "Bulleted list", icon: <List size={20} strokeWidth={2.05} /> },
-    { label: "Checklist", icon: <CheckSquare size={20} strokeWidth={2.05} /> },
-    { label: "Image", icon: <ImageIcon size={20} strokeWidth={2.05} /> },
-  ];
-
-  const rightTools = [
-    { label: "Undo", icon: <Undo2 size={20} strokeWidth={2.05} /> },
-    { label: "Redo", icon: <Redo2 size={20} strokeWidth={2.05} /> },
-    { label: "Fullscreen", icon: <Expand size={20} strokeWidth={2.05} /> },
-  ];
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: 36,
-        right: 36,
-        bottom: 17,
-        zIndex: 10,
-        display: "grid",
-        gridTemplateColumns: "1fr auto",
-        alignItems: "center",
-        gap: 12,
-        color: "rgba(58,46,92,0.72)",
-      }}
-    >
-      <div style={{ display: "flex", gap: 9 }}>
-        {leftTools.map((tool) => (
-          <EditorIconButton key={tool.label} {...tool} />
-        ))}
-      </div>
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 620,
-          color: "rgba(69,76,112,0.58)",
-          whiteSpace: "nowrap",
-          display: "none",
-        }}
-      >
-        Words: {wordCount} <span aria-hidden>•</span> Characters: {characterCount}
-      </div>
-      <div style={{ display: "flex", gap: 9, justifyContent: "flex-end" }}>
-        {rightTools.map((tool) => (
-          <EditorIconButton key={tool.label} {...tool} />
-        ))}
-      </div>
-    </div>
   );
 }
 

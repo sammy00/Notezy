@@ -3,54 +3,76 @@
 import { FileText, Menu, Plus, Search, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/shared/theme/ThemeProvider";
+import { usePathname, useRouter } from "next/navigation";
 
 const NEW_NOTE_EVENT = "notezy:create-note";
+const NEW_TASK_EVENT = "notezy:create-task";
 const NOTE_FILTER_EVENT = "notezy:set-note-filter";
+const NOTE_SEARCH_EVENT = "notezy:set-note-search";
 const FOCUS_SEARCH_EVENT = "notezy:focus-search";
 const SHOW_NOTES_EVENT = "notezy:show-notes";
 
 type Props = {
   drawerOpen: boolean;
   onToggleDrawer: () => void;
+  onCloseDrawer: () => void;
 };
 
 export default function MobileNavigation({
   drawerOpen,
   onToggleDrawer,
+  onCloseDrawer,
 }: Props) {
   const { mode } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
 
   const setFilter = (filter: "all" | "favorites") => {
+    window.dispatchEvent(new CustomEvent(NOTE_SEARCH_EVENT, { detail: { query: "" } }));
     window.dispatchEvent(new Event(SHOW_NOTES_EVENT));
     window.dispatchEvent(
       new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter } }),
     );
+    if (pathname === "/app/tasks") router.push("/app");
+  };
+
+  const createItem = () => {
+    if (pathname === "/app/tasks") {
+      window.dispatchEvent(new Event(NEW_TASK_EVENT));
+      return;
+    }
+    window.dispatchEvent(new Event(NEW_NOTE_EVENT));
+  };
+
+  const closeThen = (action: () => void) => () => {
+    onCloseDrawer();
+    action();
   };
 
   const items = [
     {
       label: "Notes",
       icon: FileText,
-      action: () => setFilter("all"),
+      action: closeThen(() => setFilter("all")),
     },
     {
       label: "Search",
       icon: Search,
-      action: () => {
+      action: closeThen(() => {
         window.dispatchEvent(new Event(SHOW_NOTES_EVENT));
         window.dispatchEvent(new Event(FOCUS_SEARCH_EVENT));
-      },
+      }),
     },
     {
       label: "New",
       icon: Plus,
       primary: true,
-      action: () => window.dispatchEvent(new Event(NEW_NOTE_EVENT)),
+      action: closeThen(createItem),
     },
     {
       label: "Favorites",
       icon: Star,
-      action: () => setFilter("favorites"),
+      action: closeThen(() => setFilter("favorites")),
     },
     {
       label: "Menu",

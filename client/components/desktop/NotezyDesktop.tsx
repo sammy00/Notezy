@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Image from "next/image";
 import { useDragControls } from "framer-motion";
 import AppLayout from "@/components/layout/AppLayout";
@@ -49,7 +49,7 @@ function saveDesktopState(state: AppState) {
   localStorage.setItem(NOTEZY_DESKTOP_STATE_KEY, JSON.stringify(state));
 }
 
-export default function NotezyDesktop() {
+export default function NotezyDesktop({ workspace }: { workspace?: ReactNode }) {
   const dragControls = useDragControls();
   const [notezy, setNotezy] = useState<AppState>(DEFAULT_NOTEZY_STATE);
   const [stateLoaded, setStateLoaded] = useState(false);
@@ -131,7 +131,7 @@ export default function NotezyDesktop() {
             maximized={notezy.maximized}
             dragControls={dragControls}
           >
-            <NoteWorkspace />
+            {workspace ?? <NoteWorkspace />}
           </AppLayout>
         </div>
       )}

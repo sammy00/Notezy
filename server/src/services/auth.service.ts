@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { createHash, randomBytes } from "crypto";
 import { User } from "../models/User";
 import { Note } from "../models/Note";
+import { Task } from "../models/Task";
 
 const DEMO_EMAIL = "demo@notezy.app";
 const DEMO_NOTES = [
@@ -29,6 +30,12 @@ const DEMO_NOTES = [
     tone: "butter",
     category: "work",
   },
+];
+
+const DEMO_TASKS = [
+  { title: "Update Notezy README", category: "work", priority: "high", status: "in-progress", description: "Polish the project documentation and screenshots.", checklist: [{ id: "demo-readme-1", text: "Review feature list", completed: true }, { id: "demo-readme-2", text: "Update screenshots", completed: false }] },
+  { title: "Prepare for frontend interview", category: "work", priority: "medium", status: "in-progress", description: "Review React, TypeScript, accessibility, and performance examples.", checklist: [{ id: "demo-interview-1", text: "Review React patterns", completed: true }, { id: "demo-interview-2", text: "Practice TypeScript questions", completed: false }] },
+  { title: "Plan weekly priorities", category: "personal", priority: "low", status: "completed", completed: true, checklist: [] },
 ];
 
 type AuthPayload = {
@@ -143,6 +150,10 @@ export const loginDemoUserService = async () => {
   await Note.deleteMany({ user: user._id });
   await Note.insertMany(
     DEMO_NOTES.map((note) => ({ ...note, user: user._id })),
+  );
+  await Task.deleteMany({ user: user._id });
+  await Task.insertMany(
+    DEMO_TASKS.map((task) => ({ ...task, user: user._id })),
   );
 
   return {

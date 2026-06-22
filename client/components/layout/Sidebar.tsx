@@ -16,6 +16,8 @@ import {
 } from "@/features/auth/authClient";
 import { normalizeNoteCategory } from "@/features/notes/types/note";
 import { showToast } from "@/shared/toast";
+import { usePathname, useRouter } from "next/navigation";
+import { fetchTasks } from "@/features/tasks/tasksApi";
 
 
 
@@ -672,8 +674,12 @@ export default function Sidebar({
 }: Props) {
 
   const { mode } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const [active, setActive] = useState("All Notes");
+  const [active, setActive] = useState(
+    pathname === "/app/tasks" ? "Tasks" : "All Notes",
+  );
   const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileMenuView, setProfileMenuView] = useState<
@@ -713,6 +719,11 @@ export default function Sidebar({
       .toUpperCase() ?? "N";
 
   useEffect(() => {
+    router.prefetch("/app");
+    router.prefetch("/app/tasks");
+  }, [router]);
+
+  useEffect(() => {
     const syncAuthUser = () => setAuthUser(getStoredAuthUser());
 
     window.addEventListener("notezy:auth-changed", syncAuthUser);
@@ -732,7 +743,7 @@ export default function Sidebar({
       }
 
       if (counts?.mainCounts) {
-        setMainCounts(counts.mainCounts);
+        setMainCounts((current) => ({ ...current, ...counts.mainCounts }));
       }
     };
 
@@ -743,6 +754,21 @@ export default function Sidebar({
         NOTE_CATEGORY_COUNTS_EVENT,
         syncCategoryCounts,
       );
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchTasks()
+      .then((tasks) => {
+        if (!cancelled) {
+          setMainCounts((current) => ({
+            ...current,
+            tasks: tasks.filter((task) => !task.completed).length,
+          }));
+        }
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
   }, []);
 
   const logout = () => {
@@ -765,22 +791,31 @@ export default function Sidebar({
   };
 
   const createNewNote = () => {
-    window.dispatchEvent(new Event(NEW_NOTE_EVENT));
+    window.dispatchEvent(
+      new Event(NEW_NOTE_EVENT),
+    );
     window.dispatchEvent(
       new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter: "all" } }),
     );
     setActive("All Notes");
     onNavigate?.();
+    if (pathname === "/app/tasks") router.push("/app");
   };
 
   const selectSidebarItem = (label: string) => {
+    window.dispatchEvent(new CustomEvent(NOTE_SEARCH_EVENT, { detail: { query: "" } }));
     setActive(label);
+
+    if (label === "Tasks") {
+      onNavigate?.();
+      if (pathname !== "/app/tasks") router.push("/app/tasks");
+      return;
+    }
 
     const filterByLabel: Record<string, string> = {
       "All Notes": "all",
       Favorites: "favorites",
       Pinned: "pinned",
-      Tasks: "tasks",
     };
 
     const filter = filterByLabel[label];
@@ -790,6 +825,7 @@ export default function Sidebar({
         new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter } }),
       );
       onNavigate?.();
+      if (pathname === "/app/tasks") router.push("/app");
     }
   };
 
@@ -804,6 +840,7 @@ export default function Sidebar({
         detail: { filter: "category", category: normalizeNoteCategory(category) },
       }),
     );
+    if (pathname === "/app/tasks") router.push("/app");
   };
 
   const openWorkspaceDialog = (
@@ -924,6 +961,7 @@ export default function Sidebar({
   return (
 <div
   className="
+    notezy-sidebar-content
     flex
     h-full
     w-full
@@ -997,7 +1035,7 @@ export default function Sidebar({
                 transition={{ duration: 0.28, ease: [0.22, 0.61, 0.36, 1] }}
               >
                 <h1
-                  className="text-[22px] font-black leading-tight"
+                  className="text-[24px] font-black leading-tight"
                   style={{ color: mode === "dark" ? "#F7F1EA" : "#1f2b56" }}
                 >
                   Notezy

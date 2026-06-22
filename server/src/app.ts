@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import noteRoutes from "./routes/note.routes";
+import taskRoutes from "./routes/task.routes";
 
 const app = express();
 const clientOrigins = process.env.CLIENT_URL
@@ -17,5 +18,6 @@ app.get("/", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", noteRoutes);
+app.use("/api/tasks", taskRoutes);
 
 export default app;
