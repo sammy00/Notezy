@@ -678,7 +678,7 @@ export default function Sidebar({
   const router = useRouter();
 
   const [active, setActive] = useState(
-    pathname === "/app/tasks" ? "Tasks" : "All Notes",
+    pathname === "/tasks" ? "Tasks" : "All Notes",
   );
   const [authUser, setAuthUser] = useState(() => getStoredAuthUser());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -719,8 +719,8 @@ export default function Sidebar({
       .toUpperCase() ?? "N";
 
   useEffect(() => {
-    router.prefetch("/app");
-    router.prefetch("/app/tasks");
+    router.prefetch("/dashboard");
+    router.prefetch("/tasks");
   }, [router]);
 
   useEffect(() => {
@@ -775,7 +775,7 @@ export default function Sidebar({
     clearAuthSession();
     setProfileMenuOpen(false);
     setProfileMenuView("menu");
-    window.location.replace("/login");
+    window.location.replace("/");
   };
 
   const toggleProfileMenu = () => {
@@ -799,7 +799,7 @@ export default function Sidebar({
     );
     setActive("All Notes");
     onNavigate?.();
-    if (pathname === "/app/tasks") router.push("/app");
+    if (pathname === "/tasks") router.push("/dashboard");
   };
 
   const selectSidebarItem = (label: string) => {
@@ -808,7 +808,7 @@ export default function Sidebar({
 
     if (label === "Tasks") {
       onNavigate?.();
-      if (pathname !== "/app/tasks") router.push("/app/tasks");
+      if (pathname !== "/tasks") router.push("/tasks");
       return;
     }
 
@@ -825,7 +825,7 @@ export default function Sidebar({
         new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter } }),
       );
       onNavigate?.();
-      if (pathname === "/app/tasks") router.push("/app");
+      if (pathname === "/tasks") router.push("/dashboard");
     }
   };
 
@@ -840,7 +840,7 @@ export default function Sidebar({
         detail: { filter: "category", category: normalizeNoteCategory(category) },
       }),
     );
-    if (pathname === "/app/tasks") router.push("/app");
+    if (pathname === "/tasks") router.push("/dashboard");
   };
 
   const openWorkspaceDialog = (
@@ -1673,7 +1673,7 @@ export default function Sidebar({
                 <>
                   <ProfileMenuButton
                     label="Sign in"
-                    onClick={() => window.location.assign("/login")}
+                    onClick={() => window.location.assign("/")}
                   />
                   <ProfileMenuButton
                     label="Create account"

@@ -32,7 +32,7 @@ export default function OfflinePage() {
           Notezy can reopen previously visited screens. Reconnect to sync your latest notes.
         </p>
         <Link
-          href="/app"
+          href="/dashboard"
           style={{
             height: 44,
             marginTop: 22,

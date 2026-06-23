@@ -33,11 +33,11 @@ export default function MobileNavigation({
     window.dispatchEvent(
       new CustomEvent(NOTE_FILTER_EVENT, { detail: { filter } }),
     );
-    if (pathname === "/app/tasks") router.push("/app");
+    if (pathname === "/tasks") router.push("/dashboard");
   };
 
   const createItem = () => {
-    if (pathname === "/app/tasks") {
+    if (pathname === "/tasks") {
       window.dispatchEvent(new Event(NEW_TASK_EVENT));
       return;
     }

@@ -35,7 +35,7 @@ export default function AuthScreen({ mode }: Props) {
         await loginWithEmail(email, password);
       }
 
-      window.location.replace("/app");
+      window.location.replace("/dashboard");
     } catch (authError) {
       setError(
         authError instanceof Error
@@ -53,7 +53,7 @@ export default function AuthScreen({ mode }: Props) {
 
     try {
       await loginAsDemo();
-      window.location.replace("/app");
+      window.location.replace("/dashboard");
     } catch (authError) {
       setError(
         authError instanceof Error
@@ -276,7 +276,7 @@ export default function AuthScreen({ mode }: Props) {
         >
           {isSignup ? "Already have an account?" : "New to Notezy?"}{" "}
           <Link
-            href={isSignup ? "/login" : "/signup"}
+            href={isSignup ? "/" : "/signup"}
             style={{
               color: "#6D4DE2",
               fontWeight: 850,

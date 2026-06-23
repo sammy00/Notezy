@@ -11,6 +11,8 @@ npm run dev      # Start Next.js on port 3000
 npm run build    # Create a production build
 npm run start    # Serve the production build
 npm run lint     # Run ESLint
+npm test         # Run Vitest in watch mode
+npm run test:run # Run the test suite once
 ```
 
 Set the API origin in `.env.local`:

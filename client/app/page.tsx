@@ -1,12 +1,5 @@
-"use client";
-
-import { useEffect } from "react";
-import { getStoredAuthToken } from "@/features/auth/authClient";
+import AuthScreen from "@/components/auth/AuthScreen";
 
 export default function HomePage() {
-  useEffect(() => {
-    window.location.replace(getStoredAuthToken() ? "/app" : "/login");
-  }, []);
-
-  return null;
+  return <AuthScreen mode="login" />;
 }

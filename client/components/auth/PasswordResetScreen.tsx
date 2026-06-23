@@ -67,7 +67,7 @@ export default function PasswordResetScreen({ mode }: Props) {
           <div style={{ marginTop: 24, padding: 18, borderRadius: 16, textAlign: "center", color: "#267A58", background: "rgba(39,150,107,.09)", border: "1px solid rgba(39,150,107,.18)" }}>
             <CheckCircle2 size={24} style={{ margin: "0 auto 8px" }} />
             <p style={{ margin: 0, fontSize: 13, fontWeight: 750 }}>{message}</p>
-            <Link href="/login" style={{ display: "inline-block", marginTop: 12, color: "#6D4DE2", fontSize: 12, fontWeight: 850, textDecoration: "none" }}>Return to sign in</Link>
+            <Link href="/" style={{ display: "inline-block", marginTop: 12, color: "#6D4DE2", fontSize: 12, fontWeight: 850, textDecoration: "none" }}>Return to sign in</Link>
           </div>
         ) : (
           <form onSubmit={submit} style={{ display: "grid", gap: 13, marginTop: 24 }}>
@@ -83,7 +83,7 @@ export default function PasswordResetScreen({ mode }: Props) {
             <button type="submit" disabled={loading} style={{ height: 46, border: 0, borderRadius: 15, color: "#FFF", background: "linear-gradient(135deg,#8B5CF6,#6D4DE2)", fontSize: 13, fontWeight: 850, cursor: loading ? "wait" : "pointer", opacity: loading ? .7 : 1 }}>
               {loading ? "Please wait..." : isReset ? "Reset Password" : "Send Reset Link"}
             </button>
-            <Link href="/login" style={{ textAlign: "center", color: "#6D4DE2", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>Back to sign in</Link>
+            <Link href="/" style={{ textAlign: "center", color: "#6D4DE2", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>Back to sign in</Link>
           </form>
         )}
       </section>

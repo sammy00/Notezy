@@ -333,7 +333,7 @@ export default function TaskWorkspace() {
   const templateTask = templateDraft ?? (selectedTask?.template ? selectedTask : null);
   if (templateTask) {
     const isDraft = Boolean(templateDraft);
-    return <TaskDetails fullPage task={templateTask} notes={notes} onClose={() => { setTemplateDraft(null); setSelectedId(""); }} onSave={(changes) => isDraft ? setTemplateDraft((current) => current ? { ...current, ...changes } : current) : void saveTask(templateTask.id, changes)} onCommit={isDraft ? commitTemplateDraft : undefined} onDelete={() => isDraft ? setTemplateDraft(null) : void removeTask(templateTask)} onDuplicate={() => isDraft ? undefined : void duplicateTask(templateTask)} onOpenNote={(noteId) => { window.dispatchEvent(new CustomEvent("notezy:open-note", { detail: { noteId } })); router.push("/app"); }} />;
+    return <TaskDetails fullPage task={templateTask} notes={notes} onClose={() => { setTemplateDraft(null); setSelectedId(""); }} onSave={(changes) => isDraft ? setTemplateDraft((current) => current ? { ...current, ...changes } : current) : void saveTask(templateTask.id, changes)} onCommit={isDraft ? commitTemplateDraft : undefined} onDelete={() => isDraft ? setTemplateDraft(null) : void removeTask(templateTask)} onDuplicate={() => isDraft ? undefined : void duplicateTask(templateTask)} onOpenNote={(noteId) => { window.dispatchEvent(new CustomEvent("notezy:open-note", { detail: { noteId } })); router.push("/dashboard"); }} />;
   }
 
   return (
@@ -371,7 +371,7 @@ export default function TaskWorkspace() {
       <form className="tasks-quick-entry" onSubmit={(event) => { event.preventDefault(); void addTask(); }}><Plus size={16} /><input ref={quickAddRef} value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a new task..." /><button disabled={!newTask.trim() || isAdding}>{isAdding ? <LoaderCircle className="animate-spin" size={15} /> : "Add"}</button></form>
 
       <TaskTemplatePicker open={templateOpen} onClose={() => setTemplateOpen(false)} onSelect={(template) => void applyTemplate(template)} />
-      <AnimatePresence>{selectedTask && <TaskDetails key={selectedTask.id} task={selectedTask} notes={notes} onClose={() => setSelectedId("")} onSave={(changes) => void saveTask(selectedTask.id, changes)} onDelete={() => void removeTask(selectedTask)} onDuplicate={() => void duplicateTask(selectedTask)} onOpenNote={(noteId) => { window.dispatchEvent(new CustomEvent("notezy:open-note", { detail: { noteId } })); router.push("/app"); }} />}</AnimatePresence>
+      <AnimatePresence>{selectedTask && <TaskDetails key={selectedTask.id} task={selectedTask} notes={notes} onClose={() => setSelectedId("")} onSave={(changes) => void saveTask(selectedTask.id, changes)} onDelete={() => void removeTask(selectedTask)} onDuplicate={() => void duplicateTask(selectedTask)} onOpenNote={(noteId) => { window.dispatchEvent(new CustomEvent("notezy:open-note", { detail: { noteId } })); router.push("/dashboard"); }} />}</AnimatePresence>
     </motion.section>
   );
 }

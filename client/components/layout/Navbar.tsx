@@ -253,7 +253,7 @@ export default function Navbar() {
     clearAuthSession();
     setProfileOpen(false);
     setProfileView("menu");
-    window.location.replace("/login");
+    window.location.replace("/");
   };
 
   const searchGlass =
@@ -317,7 +317,7 @@ export default function Navbar() {
           <input
             ref={searchInputRef}
             value={searchQuery}
-            placeholder={pathname === "/app/tasks" ? "Search tasks" : "Search notes"}
+            placeholder={pathname === "/tasks" ? "Search tasks" : "Search notes"}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             onChange={(event) => updateSearch(event.target.value)}
@@ -738,7 +738,7 @@ export default function Navbar() {
                   <>
                     <ProfileMenuButton
                       label="Sign in"
-                      onClick={() => window.location.assign("/login")}
+                      onClick={() => window.location.assign("/")}
                     />
                     <ProfileMenuButton
                       label="Create account"

@@ -148,6 +148,7 @@ npm run dev
 | `npm run build:client` | Build only the Next.js client |
 | `npm run build:server` | Compile only the Express API |
 | `npm run lint` | Run frontend ESLint checks |
+| `npm test` | Run the client Vitest suite once |
 | `npm run start:server` | Start the compiled API |
 
 ## API
